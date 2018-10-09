@@ -1,0 +1,17 @@
+{% set this_page = "index.html" if this_page is not defined else this_page %}
+{% extends "base.html.jinja" %}
+
+{% block body %}
+<div class="py-5 text-center">
+  <h2>Submit locations</h2>
+</div>
+<div class="row">
+  <div class="col-md-12 order-md-1">
+    <h4 class="mb-3">Addresses (each on a new line)</h4>
+    <form id="address_form" method="post" action="{{ base_path }}/submit_waypoints">
+      <textarea name="address_area" rows="30" style="width:100%; font-family:monospace"></textarea>
+      <input class="form-control" type="submit" value="Submit addresses" id="submit" />
+    </form>
+  </div>
+</div>
+{% endblock %}
