@@ -1,0 +1,15 @@
+version: 0.2
+phases:
+  install:
+    commands:
+      - bash /root/scripts/install_dependencies.sh
+  pre_build:
+    commands:
+      - bash /root/scripts/setup_build_dir.sh
+  build:
+    commands:
+      - bash /root/scripts/bundle_lambda.sh
+artifacts:
+  files:
+    - NewSamTemplate.json
+  discard-paths: yes

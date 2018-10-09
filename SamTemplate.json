@@ -1,0 +1,68 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Transform": "AWS::Serverless-2016-10-31",
+    "Description": "",
+    "Resources": {
+        "TeamTable":{
+            "Type":"AWS::DynamoDB::Table",
+            "Properties":{
+                "AttributeDefinitions": [{"AttributeName": "team_id","AttributeType": "S"}],
+                "KeySchema": [{"AttributeName": "team_id","KeyType": "HASH"}],
+                "ProvisionedThroughput": {"ReadCapacityUnits": "1","WriteCapacityUnits": "1"}
+            }
+        },
+        "SpotTable":{
+            "Type":"AWS::DynamoDB::Table",
+            "Properties":{
+                "AttributeDefinitions": [{"AttributeName": "team_id","AttributeType": "S"},{"AttributeName": "timestamp","AttributeType": "S"}],
+                "KeySchema": [{"AttributeName": "team_id","KeyType": "HASH"},{"AttributeName": "timestamp","KeyType": "RANGE"}],
+                "ProvisionedThroughput": {"ReadCapacityUnits": "1","WriteCapacityUnits": "1"}
+            }
+        },
+        "WebsiteFunction": {
+            "Type": "AWS::Serverless::Function",
+            "Properties": {
+                "Handler": "lambda_function.lambda_handler",
+                "Runtime": "python3.6",
+                "CodeUri": "./build/",
+                "Environment":{
+                    "Variables":{
+                        "STACK_NAME":{"Ref":"AWS::StackName"},
+                        "TEAM_TABLE":{"Ref":"TeamTable"},
+                        "SPOT_TABLE":{"Ref":"SpotTable"}
+                    }
+                },
+                "Events": {
+                    "ProxylessGet": {
+                        "Type": "Api",
+                        "Properties": {
+                            "Path": "/",
+                            "Method": "GET"
+                        }
+                    },
+                    "ProxylessPost": {
+                        "Type": "Api",
+                        "Properties": {
+                            "Path": "/",
+                            "Method": "POST"
+                        }
+                    },
+                    "ProxyGet": {
+                        "Type": "Api",
+                        "Properties": {
+                            "Path": "/{proxy+}",
+                            "Method": "GET"
+                        }
+                    },
+                    "ProxyPost": {
+                        "Type": "Api",
+                        "Properties": {
+                            "Path": "/{proxy+}",
+                            "Method": "POST"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

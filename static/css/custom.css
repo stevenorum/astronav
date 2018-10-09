@@ -1,0 +1,8 @@
+body {
+    font-family: "Cousine", "Courier New", Courier, monospace;
+}
+
+form.horizontal {
+  display: flex; /* 2. display flex to the rescue */
+  flex-direction: row;
+}

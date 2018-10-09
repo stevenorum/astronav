@@ -1,0 +1,104 @@
+{% set this_page = "index.html" if this_page is not defined else this_page %}
+{% set error_messages = [] if error_messages is not defined else error_messages %}
+{% set warning_messages = [] if warning_messages is not defined else warning_messages %}
+{% set info_messages = [] if info_messages is not defined else info_messages %}
+{% set success_messages = [] if success_messages is not defined else success_messages %}
+
+{% set _default_title = "AstroNav" %}
+{% set _site_name = "astronav" %}
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>{% if title is defined %}{{title}}{% else %}{{_default_title}}{% endif %}</title>
+
+    <!-- Bootstrap core CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
+    <!-- Custom styles for this template -->
+    <link href="{{ static_base }}/static/css/sticky-footer-navbar.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Cousine" rel="stylesheet">
+    <!-- I think Cousine is what I'll want to stick with, but I'm keeping these guys around to make it easier to switch if I decide to. -->
+    <!-- <link href="https://fonts.googleapis.com/css?family=Overpass Mono" rel="stylesheet"> -->
+    <!-- <link href="https://fonts.googleapis.com/css?family=Source Code Pro" rel="stylesheet"> -->
+    <link href="{{ static_base }}/static/css/custom.css" rel="stylesheet">
+    {% block head %}{% endblock %}
+    {% block css_block %}{% endblock %}
+  </head>
+
+  <body class="bg-light">
+
+    <header>
+      <!-- Fixed navbar -->
+      <nav class="navbar navbar-expand-md navbar-light fixed-top" style="background-color: #a5a5a5;">
+        <a class="navbar-brand" href="{{ base_path }}/"><img class="d-inline-block align-top" src="{{ static_base }}/static/{{ _site_name }}.png" alt="" height="30" width="110"></a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarCollapse">
+          <ul class="navbar-nav mr-auto">
+            <li class="nav-item{{' active' if this_page == 'index.html' else ''}}">
+              <a class="nav-link" href="{{ base_path }}/">Home</a>
+            </li>
+            <li class="nav-item{{' active' if this_page == 'docs.html' else ''}}">
+              <a class="nav-link disabled" href="{{ base_path }}/docs.html">Documentation</a>
+            </li>
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            {% if user %}
+            <li class="nav-item{{' active' if this_page == 'user/view.html' else ''}}">
+              <a class="nav-link" href="{{ base_path }}/user/view.html">Account</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ base_path }}/user/logout">Logout</a>
+            </li>
+          {% else %}
+          <li class="nav-item{{' active' if this_page == 'user/login.html' else ''}}">
+            <a class="nav-link" href="{{ base_path }}/user/login.html">Login</a>
+          </li>
+          <li class="nav-item{{' active' if this_page == 'user/create.html' else ''}}">
+            <a class="nav-link" href="{{ base_path }}/user/create.html">Register</a>
+          </li>
+          {% endif %}
+          </ul>
+        </div>
+      </nav>
+    </header>
+
+    <main role="main" class="container">
+      {% for message in error_messages %}
+      <div class="alert alert-danger text-center" role="alert">{{ message }}</div>
+      {% endfor %}
+      {% for message in warning_messages %}
+      <div class="alert alert-warning text-center" role="alert">{{ message }}</div>
+      {% endfor %}
+      {% for message in info_messages %}
+      <div class="alert alert-info text-center" role="alert">{{ message }}</div>
+      {% endfor %}
+      {% for message in success_messages %}
+      <div class="alert alert-success text-center" role="alert">{{ message }}</div>
+      {% endfor %}
+      {% block body %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <span class="text-muted">A creation of Drunken Robot Labs.</span>
+      </div>
+    </footer>
+
+<!-- Bootstrap core JavaScript
+     ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <script src="{{ static_base }}/static/js/vendor/holder.min.js"></script>
+    {% block js_block %}{% endblock %}
+  </body>
+</html>
