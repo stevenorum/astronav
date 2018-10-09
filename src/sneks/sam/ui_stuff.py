@@ -9,9 +9,19 @@ from sneks.sam import events
 from sneks import snekjson
 import traceback
 
-env = Environment(loader=FileSystemLoader('/var/task/jinja_templates/'))
+env = Environment(loader=FileSystemLoader(os.path.join(os.environ["LAMBDA_TASK_ROOT"], "jinja_templates")))
+
+try:
+    with open(os.path.join(os.environ["LAMBDA_TASK_ROOT"], "static_config.json")) as f:
+        data = json.load(f)
+        for k in data:
+            os.environ[k] = data[k].strip()
+except:
+    traceback.print_exc()
+    print("Unable to add static info to the path.  Falling back to the bundled defaults.")
 
 content_types = {
+    "ico":"image/x-icon",
     "jpg":"image/jpg",
     "jpeg":"image/jpeg",
     "png":"image/png",
@@ -39,6 +49,7 @@ binary_types = [
     "image/gif",
     "image/bmp",
     "image/tiff",
+    "image/x-icon",
     "font/ttf",
     "application/vnd.ms-fontobject",
     "application/x-font-woff",
@@ -100,8 +111,8 @@ def make_message(message, heading="Example Website", event=None, **kwargs):
 def get_static(filename, event=None, **kwargs):
     if "STATIC_BUCKET" in os.environ and "STATIC_PATH" in os.environ:
         return redirect("https://s3.amazonaws.com/{STATIC_BUCKET}/{STATIC_PATH}/{filename}".format(filename=filename, **os.environ))
-    filepath = os.path.abspath(os.path.join("/var/task",filename))
-    if os.path.isfile(filepath) and filepath.startswith("/var/task/static/"):
+    filepath = os.path.abspath(os.path.join(os.environ["LAMBDA_TASK_ROOT"],filename))
+    if os.path.isfile(filepath) and filepath.startswith(os.path.join(os.environ["LAMBDA_TASK_ROOT"],"static","")):
         content_type = get_content_type(filename)
         b64encoded = False
         if content_type in binary_types:
