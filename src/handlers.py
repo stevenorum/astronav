@@ -1,6 +1,6 @@
 import json
 
-from ui_stuff import loader_for
+from sneks.sam.ui_stuff import loader_for
 
 # @loader_for("route.html")
 @loader_for("message.html")
