@@ -1,6 +1,5 @@
 import json
 
-#from ui_helpers import get_static, render_page
 from sneks.sam.response_core import PathMatcher, ListMatcher
 
 from sneks.sam import ui_stuff

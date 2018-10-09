@@ -13,7 +13,11 @@ def qsp(event):
 def base_path(event):
     if not event:
         return None
-    return event["requestContext"]["path"][:-1*len(event["path"])].rstrip("/")
+    pathlen = len(event["path"].rstrip("/"))
+    if pathlen:
+        return event["requestContext"]["path"][:-1*pathlen].rstrip("/")
+    else:
+        return event["requestContext"]["path"].rstrip("/")
 
 def domain(event, prefix="https://"):
     if not event:
