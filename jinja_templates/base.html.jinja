@@ -4,6 +4,8 @@
 {% set info_messages = [] if info_messages is not defined else info_messages %}
 {% set success_messages = [] if success_messages is not defined else success_messages %}
 
+{% set GMAPS_API_KEY = "AIzaSyDELQPc2vQNkk81bcM3f-4nOmcKuRbIV6k" if GMAPS_API_KEY is not defined else GMAPS_API_KEY %}
+
 {% set _default_title = "AstroNav" %}
 {% set _site_name = "astronav" %}
 
@@ -98,7 +100,7 @@
     <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
-    <script src="{{ static_base }}/static/js/vendor/holder.min.js"></script>
+    <script src="{{ static_base }}/static/js/holder.min.js"></script>
     {% block js_block %}{% endblock %}
   </body>
 </html>

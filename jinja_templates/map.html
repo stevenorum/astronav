@@ -1,0 +1,21 @@
+{% extends "base.html.jinja" %}
+
+{% block css_block %}
+<link href="{{ static_base }}/static/css/gmaps.css" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+<!-- https://developers.google.com/maps/documentation/javascript/tutorial -->
+<div class="map" id="map"></div>
+<script>
+  var map;
+  function initMap() {
+    map = new google.maps.Map(document.getElementById('map'), {
+      center: {lat: -34.397, lng: 150.644},
+      zoom: 8
+    });
+  }
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key={{ GMAPS_API_KEY }}&callback=initMap" async defer></script>
+
+{% endblock %}

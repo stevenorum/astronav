@@ -11,6 +11,14 @@
                 "ProvisionedThroughput": {"ReadCapacityUnits": "1","WriteCapacityUnits": "1"}
             }
         },
+        "AddressTable":{
+            "Type":"AWS::DynamoDB::Table",
+            "Properties":{
+                "AttributeDefinitions": [{"AttributeName": "address","AttributeType": "S"}],
+                "KeySchema": [{"AttributeName": "address","KeyType": "HASH"}],
+                "ProvisionedThroughput": {"ReadCapacityUnits": "1","WriteCapacityUnits": "1"}
+            }
+        },
         "SpotTable":{
             "Type":"AWS::DynamoDB::Table",
             "Properties":{
@@ -19,16 +27,109 @@
                 "ProvisionedThroughput": {"ReadCapacityUnits": "1","WriteCapacityUnits": "1"}
             }
         },
+        "RouteTable":{
+            "Type":"AWS::DynamoDB::Table",
+            "Properties":{
+                "AttributeDefinitions": [{"AttributeName": "route_id","AttributeType": "S"}],
+                "KeySchema": [{"AttributeName": "route_id","KeyType": "HASH"}],
+                "ProvisionedThroughput": {"ReadCapacityUnits": "1","WriteCapacityUnits": "1"}
+            }
+        },
+        "LambdaPolicy": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "Description": "",
+                "Path": "/",
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "cloudwatch:*",
+                                "logs:*"
+                            ],
+                            "Resource": "*",
+                            "Effect": "Allow"
+                        },
+                        {
+                            "Action": [
+                                "dynamodb:Scan",
+                                "dynamodb:Query",
+                                "dynamodb:GetItem",
+                                "dynamodb:PutItem",
+                                "dynamodb:DeleteItem",
+                                "dynamodb:UpdateItem",
+                                "dynamodb:BatchGetItem",
+                                "dynamodb:BatchWriteItem",
+                                "dynamodb:Describe*",
+                                "dynamodb:List*"
+                            ],
+                            "Resource": [
+                                { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AddressTable}"},
+                                { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AddressTable}/*"},
+                                { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${SpotTable}"},
+                                { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${SpotTable}/*"},
+                                { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${RouteTable}"},
+                                { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${RouteTable}/*"},
+                                { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${TeamTable}"},
+                                { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${TeamTable}/*"}
+                            ],
+                            "Effect": "Allow"
+                        },
+                        {
+                            "Action": [
+                                "cloudformation:Describe*",
+                                "cloudformation:Get*",
+                                "cloudformation:List*"
+                            ],
+                            "Resource": [
+                                {"Ref":"AWS::StackId"},
+                                { "Fn::Sub" : "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*"}
+                            ],
+                            "Effect": "Allow"
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                }
+            }
+        },
+        "LambdaRole":{
+            "Type":"AWS::IAM::Role",
+            "Properties":{
+                "AssumeRolePolicyDocument":{
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path":"/",
+                "ManagedPolicyArns":[{"Ref":"LambdaPolicy"}]
+            }
+        },
         "WebsiteFunction": {
             "Type": "AWS::Serverless::Function",
             "Properties": {
                 "Handler": "lambda_function.lambda_handler",
+                "Role": {"Fn::GetAtt":["LambdaRole","Arn"]},
+                "Timeout": 30,
+                "MemorySize":256,
                 "Runtime": "python3.6",
                 "CodeUri": "./build/",
                 "Environment":{
                     "Variables":{
                         "STACK_NAME":{"Ref":"AWS::StackName"},
                         "TEAM_TABLE":{"Ref":"TeamTable"},
+                        "ADDRESS_TABLE":{"Ref":"AddressTable"},
+                        "ROUTE_TABLE":{"Ref":"RouteTable"},
                         "SPOT_TABLE":{"Ref":"SpotTable"}
                     }
                 },
