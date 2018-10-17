@@ -1,4 +1,4 @@
-import boto3A
+import boto3
 import copy
 import googlemaps
 import hashlib
@@ -7,7 +7,10 @@ from math import radians, degrees, cos, sin, asin, sqrt, fabs, log, tan, pi, ata
 import os
 import traceback
 import urllib
-from sneks.sam.ui_stuff import loader_for
+import uuid
+from sneks.sam import events
+from sneks.sam.response_core import make_response
+from sneks.sam.ui_stuff import loader_for, make_404
 
 GMAPS_API_KEY = "AIzaSyDELQPc2vQNkk81bcM3f-4nOmcKuRbIV6k"
 
@@ -56,32 +59,6 @@ def minimize_gps(point, distance=1):
             _lng_str = _lng_str[:-1]
     return {"lat":float(lat_str), "lng":float(lng_str)}
 
-def load_address_from_db(address):
-    try:
-        return ADDRESS_TABLE.get_item(Key={"address":address})["Item"]
-    except:
-        return None
-
-def load_points_for_address(address):
-    item = load_address_from_db(address)
-    if not item:
-        print("Loading address from google maps: {}".format(address))
-        gmaps = googlemaps.Client(key=GMAPS_API_KEY)
-        geocode_results = gmaps.geocode(address)
-        geocode_result = geocode_results[0]
-        lat = geocode_result["geometry"]["location"]["lat"]
-        lon = geocode_result["geometry"]["location"]["lng"]
-        item = {
-            "address":address,
-            "latitude":str(lat),
-            "longitude":str(lon),
-            "geocode_results":json.dumps(geocode_results)
-        }
-        ADDRESS_TABLE.put_item(Item=item)
-    else:
-        print("Loaded address from database: {}".format(address))
-    return (item["latitude"], item["longitude"])
-
 def load_route_from_google(addresses):
     kwargs = {
         "origin":addresses[0],
@@ -92,37 +69,12 @@ def load_route_from_google(addresses):
         "avoid":["tolls","ferries"]
     }
     gmaps = googlemaps.Client(key=GMAPS_API_KEY)
-    directions = gmaps.directions(**kwargs)[0]
-
-def get_distance(addresses):
-    distance = 0
-    for i in len(addresses):
-        start = addresses[i]
-        end = addresses[i+1%len(addresses)]
-        distance += haversine(start["lat"], start["lon"], end["lat"], end["lon"])
-    return distance
-
-def approximate_tsp(addresses):
-    route = copy.deepcopy(addresses)
-    order = "/".join([a["address"] for a in route])
-    current_distance = get_distance(addresses)
-    previous_order = None
-    while not order == previous_order:
-        previous_order = order
-        for i in range(len(addresses)):
-            for j in range(len(addresses)):
-                if i != j:
-                    new_route = copy.deepcopy(route)
-                    new_route[i] = route[j]
-                    new_route[j] = route[i]
-                    new_distance = get_distance(new_route)
-                    if new_distance < current_distance:
-                        current_distance = new_distance
-                        route = new_route
-        order = "/".join([a["address"] for a in route])
+    route = gmaps.directions(**kwargs)[0]
     return route
 
 def convert_python_route_to_javascript(route):
+    if isinstance(route, str):
+        route = deepload(route)
     response = {"routes":[copy.deepcopy(route)]}
     route = response["routes"][0]
     start_address = route["legs"][0]["start_address"]
@@ -136,7 +88,6 @@ def convert_python_route_to_javascript(route):
         "unitSystem": 1,
         "waypoints":[{"location":{"query":addr},"stopover":True} for addr in waypoints]
     }
-
     for route in response["routes"]:
         route["bounds"] = {
             "east": route["bounds"]["northeast"]["lng"],
@@ -155,109 +106,201 @@ def convert_python_route_to_javascript(route):
         route["overview_path"] = [route["legs"][0]["start_location"], route["legs"][-1]["end_location"]]
     return response
 
-@loader_for("route.html")
-# @loader_for("message.html.jinja")
-def submit_waypoints(event, *args, **kwargs):
-    body = urllib.parse.parse_qs(event["body"])
-    addresses = body.get("address_area",[])
-    if addresses:
-        addresses = [x.strip() for x in addresses[0].split("\n") if x.strip()]
-    address_map = {}
-    max_lat = -200.0
-    max_lon = -200.0
-    min_lat = 200.0
-    min_lon = 200.0
-    for address in addresses:
-        lat, lon = load_points_for_address(address)
-        lat = float(lat)
-        lon = float(lon)
-        max_lat = max(lat, max_lat)
-        max_lon = max(lon, max_lon)
-        min_lat = min(lat, min_lat)
-        min_lon = min(lon, min_lon)
-        address_map[address] = {"lat":lat, "lon":lon}
-    center_lat = (max_lat - min_lat)/2 + min_lat
-    center_lon = (max_lon - min_lon)/2 + min_lon
-    address_list = [{"address":k,"lat":address_map[k]["lat"],"lon":address_map[k]["lon"]} for k in address_map]
-    route = approximate_tsp(address_list)
-    info = {
-        "lat_range":(min_lat, center_lat, max_lat),
-        "lon_range":(min_lon, center_lon, max_lon),
-        "addresses":address_map,
-        "address_list":route
-    }
-    params = {
-        "message_title":"Waypoints:",
-        "GMAPS_KEY":GMAPS_API_KEY,
-        "ROUTE_INFO":json.dumps(info, indent=2, sort_keys=True)
-    }
-    return params
+def deepload(s):
+    while True:
+        try:
+            s = json.loads(s)
+        except:
+            break
+    if isinstance(s, list):
+        s = [deepload(x) for x in s]
+    if isinstance(s, dict):
+        s = {k:deepload(s[k]) for k in s}
+    return s
 
-@loader_for("route.html")
-def get_route(event, *args, **kwargs):
-    body = urllib.parse.parse_qs(event["body"])
-    addresses = body.get("address_area",[])
-    if addresses:
-        addresses = [x.strip() for x in addresses[0].split("\n") if x.strip()]
+def store_route(event, *args, **kwargs):
+    body = deepload(event["body"])
+    if "addresses" in body:
+        route_id, response, item = load_route(addresses=body["addresses"])
+    elif "route_id" in body:
+        route_id, response, item = load_route(route_id=body["route_id"])
+    else:
+        return make_404(event)
+    if not response:
+        return make_404(event)
+    # return {"route_id":route_id,"route_result":result}
+    return make_response({"redirect":events.base_path(event) + "/route_map.html?route_id={}".format(route_id)})
 
-    address_map = {}
-    max_lat = -200.0
-    max_lon = -200.0
-    min_lat = 200.0
-    min_lon = 200.0
-    for address in addresses:
-        lat, lon = load_points_for_address(address)
-        lat = float(lat)
-        lon = float(lon)
-        max_lat = max(lat, max_lat)
-        max_lon = max(lon, max_lon)
-        min_lat = min(lat, min_lat)
-        min_lon = min(lon, min_lon)
-        address_map[address] = {"lat":lat, "lon":lon}
-    center_lat = (max_lat - min_lat)/2 + min_lat
-    center_lon = (max_lon - min_lon)/2 + min_lon
-    address_list = [{"address":k,"lat":address_map[k]["lat"],"lon":address_map[k]["lon"]} for k in address_map]
-    route = approximate_tsp(address_list)
-    info = {
-        "lat_range":(min_lat, center_lat, max_lat),
-        "lon_range":(min_lon, center_lon, max_lon),
-        "addresses":address_map,
-        "address_list":route
+@loader_for("route_map.html")
+def view_route(event, *args, **kwargs):
+    params = event.get("multiValueQueryStringParameters",{})
+    route_ids = params.get("route_id",[])
+    if not route_ids:
+        return make_404(event)
+    route_id = route_ids[0]
+    route_id, response, item = load_route(route_id=route_id)
+    if not response:
+        return make_404(event)
+    return {
+        "route_id":route_id,
+        "js_data":json.dumps(response, sort_keys=True, separators=(',',':')),
+        "distance":format_distance(item["distance"]),
+        "duration":format_time(item["duration"]),
+        "addresses":item["addresses"]
     }
-    params = {
-        "message_title":"Waypoints:",
-        "GMAPS_KEY":GMAPS_API_KEY,
-        "ROUTE_INFO":json.dumps(info, indent=2, sort_keys=True)
+
+def format_distance(meters):
+    meters = int(meters)
+    miles = meters/1609.34
+    if miles >= 100:
+        return "{:.0f} miles".format(miles)
+    if miles > .5:
+        return "{:.1f} miles".format(miles)
+    feet = miles * 5280
+    return "{:.0f} feet".format(feet)
+
+def format_time(seconds):
+    seconds = int(seconds)
+    minutes = int(seconds/60)
+    seconds = seconds - 60*minutes
+    if seconds > 30:
+        minutes += 1
+    hours = int(minutes/60)
+    minutes = minutes - hours*60
+    days = int(hours/24)
+    hours = hours - days*24
+    if days > 0:
+        return "{}:{:0>2d}:{:0>2d}".format(days, hours, minutes)
+    else:
+        return "{:0>2d}:{:0>2d}".format(hours, minutes)
+
+@loader_for("route_list.html")
+def list_routes_handler(event, *args, **kwargs):
+    params = event.get("multiValueQueryStringParameters",{})
+    params = params if params else {}
+    last_routes = params.get("last_route",[])
+    if not last_routes:
+        last_route = None
+    else:
+        last_route = last_routes[0]
+    routes, new_last_route = list_routes(last_route=last_route)
+    routes = [r for r in routes if r.get("addresses")]
+    for route in routes:
+        route["addresses"] = deepload(route["addresses"])
+        route["num_locations"] = len(route["addresses"])
+        route["distance"] = format_distance(route.get("distance")) if route.get("distance") else "???"
+        route["duration"] = format_time(route.get("duration")) if route.get("duration") else "???"
+    return {"routes":routes,"last_route":new_last_route}
+
+def list_routes(last_route=None):
+    kwargs = {
+        "Select":"SPECIFIC_ATTRIBUTES",
+        # "ProjectionExpression":"route_id, addresses, duration, distance",
+        "ProjectionExpression":"#RID, #ADR, #DUR, #DIS",
+        "ExpressionAttributeNames":{
+            "#RID":"route_id",
+            "#ADR":"addresses",
+            "#DUR":"duration",
+            "#DIS":"distance"
+        }
     }
-    return params
+    if last_route:
+        kwargs["ExclusiveStartKey"] = {"route_id":last_route}
+    response = ROUTE_TABLE.scan(**kwargs)
+    new_last_route = None
+    if response.get("LastEvaluatedKey",None):
+        new_last_route = response["LastEvaluatedKey"]["route_id"]
+    return response["Items"], new_last_route
 
 def load_route_from_db(route_id):
     try:
-        return ROUTE_TABLE.get_item(Key={"route_id":route_id})["Item"]
+        item = ROUTE_TABLE.get_item(Key={"route_id":route_id})["Item"]
+        if item.get("route") and convert_python_route_to_javascript(item["route"]):
+            # Make sure it contains a result and that the result can be parsed.
+            return item
     except:
         traceback.print_exc()
-        return None
+    return None
 
 def get_route_id(addresses):
-    route_id = hashlib.md5("\n".join([a.upper() for a in addresses]).encode("utf-8")).hexdigest()
+    route_id = hashlib.md5("\n".join([a.strip().upper() for a in addresses]).encode("utf-8")).hexdigest()
     return route_id
 
-def load_route(addresses):
-    route_id = get_route_id(addresses)
-    item = load_route_from_db(route_id)
-    if item:
-        print("Route {} loaded from database.".format(route_id))
+def ensure_all_fields_filled(item):
+    changed = False
+    route = deepload(item["route"])
+    if "addresses" not in item:
+        addresses = [l["start_address"] for l in route["legs"]]
+        addresses.append(route["legs"][-1]["end_address"])
+        item["addresses"] = addresses
+        changed = True
+    if "distance" not in item:
+        distance = 0
+        for leg in route["legs"]:
+            distance += leg["distance"]["value"]
+        item["distance"] = distance # meters
+        changed = True
+    if "duration" not in item:
+        duration = 0
+        for leg in route["legs"]:
+            duration += leg["duration"]["value"]
+        item["duration"] = duration # seconds
+        changed = True
+        pass
+    return changed
+
+def load_route(addresses=None, route_id=None):
+    if (not not addresses) == (not not route_id):
+        raise RuntimeError("Must provide one and only one of addresses and route_id!")
+    if addresses:
+        route_id = get_route_id(addresses)
+        item = load_route_from_db(route_id)
+        if item:
+            print("Route {} loaded from database.".format(route_id))
+            if ensure_all_fields_filled(item):
+                print("Route entry contents updated.  Updating database.")
+                ROUTE_TABLE.put_item(Item=item)
+        else:
+            print("Loading route {} from google maps.".format(route_id))
+            route = load_route_from_google(addresses)
+            item = {
+                "route_id":route_id,
+                "route":json.dumps(route, separators=(',',':'))
+            }
+            ensure_all_fields_filled(item)
+            ROUTE_TABLE.put_item(Item=item)
+            print("Route {} loaded from google maps and cached.".format(route_id))
     else:
-        print("Loading route {} from google maps.".format(route_id))
-        route = load_route_from_google(addresses)
+        item = load_route_from_db(route_id)
+        if ensure_all_fields_filled(item):
+            print("Route entry contents updated.  Updating database.")
+            ROUTE_TABLE.put_item(Item=item)
+        if not item:
+            return route_id, None, None
+    return route_id, convert_python_route_to_javascript(item["route"]), item
+
+def load_team_from_db(team_id):
+    try:
+        item = TEAM_TABLE.get_item(Key={"team_id":team_id})["Item"]
+        return item
+    except:
+        traceback.print_exc()
+    return None
+
+def get_team_id():
+    uuid = str(uuid.uuid1()).replace('-','').lower()
+    return uuid
+
+def load_team(team_id=None):
+    team_id = team_id if team_id else get_team_id()
+    item = load_team_from_db(team_id)
+    if item:
+        print("Team {} loaded from database.".format(team_id))
+    else:
+        print("Creating new team {}.".format(team_id))
         item = {
-            "route_id":route_id,
-            "result":json.dumps(route, separators=(',',':'))
+            "team_id":team_id,
         }
-        ROUTE_TABLE.put_item(Item=item)
-        print("Route {} loaded from google maps and cached.".format(route_id))
-    return 
-
-
-def cache_google_result(event, *args, **kwargs):
-    result = json.loads(event["body"])
+        TEAM_TABLE.put_item(Item=item)
+    item = deepload(item)
+    return item

@@ -12,8 +12,10 @@ STATIC_MATCHERS = [
 
 DYNAMIC_MATCHERS = [
     PathMatcher(r"^/?$", ui_stuff.get_page, {"template_name":"index.html"}),
+    PathMatcher(r"^/?store_route$", handlers.store_route),
+    PathMatcher(r"^/?route_map.html$", handlers.view_route),
+    PathMatcher(r"^/?route_list.html$", handlers.list_routes_handler),
     PathMatcher(r"^/?(?P<template_name>[a-z_]*.html)$", ui_stuff.get_page),
-    PathMatcher(r"^/?submit_waypoints$", handlers.submit_waypoints),
     PathMatcher(r".*debug.*", ui_stuff.make_debug),
     PathMatcher(r".*", ui_stuff.make_404),
 ]

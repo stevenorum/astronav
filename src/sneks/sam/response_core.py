@@ -1,9 +1,13 @@
 import copy
+import json
 import re
 from urllib.parse import urlencode, urlparse, parse_qs
 
 def make_response(body, code=200, headers={}, base64=False):
     _headers = {"Content-Type": "text/html"}
+    if isinstance(body, (list,dict)):
+        body = json.dumps(body)
+        _headers = {"Content-Type": "application/json"}
     _headers.update(headers)
     return {
         "body": body,

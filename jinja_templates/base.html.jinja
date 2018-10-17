@@ -43,14 +43,20 @@
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarCollapse">
+
           <ul class="navbar-nav mr-auto">
             <li class="nav-item{{' active' if this_page == 'index.html' else ''}}">
-              <a class="nav-link" href="{{ base_path }}/">Home</a>
+              <a class="nav-link" href="{{ base_path }}/">[Home]</a>
             </li>
-            <li class="nav-item{{' active' if this_page == 'docs.html' else ''}}">
-              <a class="nav-link disabled" href="{{ base_path }}/docs.html">Documentation</a>
+            <li class="nav-item{{' active' if this_page == 'routes.html' else ''}}">
+              <a class="nav-link" href="{{ base_path }}/route_list.html">[List routes]</a>
+            </li>
+            <li class="nav-item{{' active' if this_page == 'new_route.html' else ''}}">
+              <a class="nav-link" href="{{ base_path }}/new_route.html">[New route]</a>
             </li>
           </ul>
+
+          <!--
           <ul class="nav navbar-nav navbar-right">
             {% if user %}
             <li class="nav-item{{' active' if this_page == 'user/view.html' else ''}}">
@@ -68,6 +74,7 @@
           </li>
           {% endif %}
           </ul>
+          -->
         </div>
       </nav>
     </header>

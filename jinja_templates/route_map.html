@@ -6,8 +6,15 @@
 {% endblock %}
 
 {% block body %}
-<h2>Route: {{ route_id }}</h2>
-<h3>Distance: </h3>
+<h2>Distance: {{ distance }}</h2>
+<h3>Time guess: {{ duration }}</h3>
+<h3>Route ID: {{ route_id }}</h3>
+<h2>Start: <a href="https://www.google.com/maps/dir//{{addresses[0]}}" target="_blank">{{ addresses[0] }}</a></h2>
+{% for address in addresses[1:-1] %}
+<h3>Waypoint: <a href="https://www.google.com/maps/dir//{{address}}" target="_blank">{{ address }}</a></h3>
+{% endfor %}
+<h2>End: <a href="https://www.google.com/maps/dir//{{addresses[-1]}}" target="_blank">{{ addresses[-1] }}</a></h2>
+<h3><a href="https://www.google.com/maps/dir/{%for address in addresses%}/{{address}}{%endfor%}" target="_blank">[Open all in gmaps.]</a></h3>
 <!-- https://developers.google.com/maps/documentation/javascript/tutorial -->
 <div class="map" id="map"></div>
 <div class="directions" id="directions"></div>
