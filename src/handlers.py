@@ -45,7 +45,13 @@ def make_ddb_safe(item):
 
 def ddb_save(table, item, **kwargs):
     item = make_ddb_safe(item)
-    table.put_item(Item=item, **kwargs)
+    try:
+        table.put_item(Item=item, **kwargs)
+    except:
+        print("Error saving the following object:")
+        print(dumps(item))
+        traceback.print_exc()
+        raise
 
 def save_team(item, **kwargs):
     ddb_save(TEAM_TABLE, item, **kwargs)
