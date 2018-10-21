@@ -41,7 +41,21 @@ def make_ddb_safe(item):
         item = {k:make_ddb_safe(item[k]) for k in item}
     if isinstance(item, float):
         item = Decimal(item)
+    if item is None:
+        item = "null"
     return item
+
+def deepload(s):
+    while True:
+        try:
+            s = json.loads(s)
+        except:
+            break
+    if isinstance(s, list):
+        s = [deepload(x) for x in s]
+    if isinstance(s, dict):
+        s = {k:deepload(s[k]) for k in s}
+    return s
 
 def ddb_save(table, item, **kwargs):
     item = make_ddb_safe(item)
@@ -61,18 +75,6 @@ def save_route(item, **kwargs):
 
 def save_image(item, **kwargs):
     ddb_save(IMAGE_TABLE, item, **kwargs)
-
-def deepload(s):
-    while True:
-        try:
-            s = json.loads(s)
-        except:
-            break
-    if isinstance(s, list):
-        s = [deepload(x) for x in s]
-    if isinstance(s, dict):
-        s = {k:deepload(s[k]) for k in s}
-    return s
 
 def store_route(event, *args, **kwargs):
     body = deepload(event["body"])
