@@ -1,7 +1,11 @@
 import boto3
 import copy
-import googlemaps
+from datetime import datetime, timedelta
+from decimal import Decimal
+import gmaps
 import hashlib
+import http.cookies
+import instagram
 import json
 from math import radians, degrees, cos, sin, asin, sqrt, fabs, log, tan, pi, atan2
 import os
@@ -9,102 +13,48 @@ import traceback
 import urllib
 import uuid
 from sneks.sam import events
-from sneks.sam.response_core import make_response
+from sneks.sam.response_core import make_response, redirect
 from sneks.sam.ui_stuff import loader_for, make_404
 
-GMAPS_API_KEY = "AIzaSyDELQPc2vQNkk81bcM3f-4nOmcKuRbIV6k"
+TEAM_COOKIE_KEY = "astronav-team"
 
-ADDRESS_TABLE = boto3.resource("dynamodb").Table(os.environ["ADDRESS_TABLE"])
 TEAM_TABLE = boto3.resource("dynamodb").Table(os.environ["TEAM_TABLE"])
 ROUTE_TABLE = boto3.resource("dynamodb").Table(os.environ["ROUTE_TABLE"])
+IMAGE_TABLE = boto3.resource("dynamodb").Table(os.environ["IMAGE_TABLE"])
 
-def bearing(lat1, lon1, lat2, lon2):
-    lat1, lon1, lat2, lon2 = map(float, [lat1, lon1, lat2, lon2])
-    startLat, startLong, endLat, endLong = map(radians, [lat1, lon1, lat2, lon2])
-    dPhi = log(tan(endLat/2.0+pi/4.0)/tan(startLat/2.0+pi/4.0))
-    if abs(dLong) > pi:
-        if dLong > 0.0:
-            dLong = -(2.0 * pi - dLong)
-        else:
-            dLong = (2.0 * pi + dLong)
-    bearing = (degrees(atan2(dLong, dPhi)) + 360.0) % 360.0
-    return bearing
+def make_json_safe(item):
+    if isinstance(item, list):
+        item = [make_json_safe(e) for e in item]
+    if isinstance(item, dict):
+        item = {k:make_json_safe(item[k]) for k in item}
+    if isinstance(item, Decimal):
+        item = float(item)
+    return item
 
-def haversine(lat1, lon1, lat2, lon2):
-    lat1, lon1, lat2, lon2 = map(float, [lat1, lon1, lat2, lon2])
-    # https://stackoverflow.com/questions/4913349/haversine-formula-in-python-bearing-and-distance-between-two-gps-points
-    # convert decimal degrees to radians
-    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
-    # haversine formula
-    dlon = lon2 - lon1
-    dlat = lat2 - lat1
-    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-    c = 2 * asin(sqrt(a))
-    r = 6371000 # Radius of earth in meters. Use 3959 for miles or 20903520 for feet
-    return c * r
+def dumps(obj, *args, **kwargs):
+    return json.dumps(make_json_safe(obj), *args, **kwargs)
 
-def minimize_gps(point, distance=1):
-    latitude = point["lat"]
-    longitude = point["lng"]
-    lat_str = str(latitude)
-    lng_str = str(longitude)
-    _lat_str = lat_str
-    _lng_str = lng_str
-    while haversine(latitude, longitude, float(_lat_str), float(_lng_str)) < distance:
-        lat_str = _lat_str
-        lng_str = _lng_str
-        if len(_lat_str.split(".")[1]) >= len(_lng_str.split(".")[1]):
-            _lat_str = _lat_str[:-1]
-        if len(_lat_str.split(".")[1]) <= len(_lng_str.split(".")[1]):
-            _lng_str = _lng_str[:-1]
-    return {"lat":float(lat_str), "lng":float(lng_str)}
+def make_ddb_safe(item):
+    if isinstance(item, list):
+        item = [make_ddb_safe(e) for e in item]
+    if isinstance(item, dict):
+        item = {k:make_ddb_safe(item[k]) for k in item}
+    if isinstance(item, float):
+        item = Decimal(item)
+    return item
 
-def load_route_from_google(addresses):
-    kwargs = {
-        "origin":addresses[0],
-        "destination":addresses[-1],
-        "mode":"walking",
-        "waypoints":addresses[1:-1],
-        "optimize_waypoints":True,
-        "avoid":["tolls","ferries"]
-    }
-    gmaps = googlemaps.Client(key=GMAPS_API_KEY)
-    route = gmaps.directions(**kwargs)[0]
-    return route
+def ddb_save(table, item, **kwargs):
+    item = make_ddb_safe(item)
+    table.put_item(Item=item, **kwargs)
 
-def convert_python_route_to_javascript(route):
-    if isinstance(route, str):
-        route = deepload(route)
-    response = {"routes":[copy.deepcopy(route)]}
-    route = response["routes"][0]
-    start_address = route["legs"][0]["start_address"]
-    waypoints = [l["start_address"] for l in route["legs"][1:]]
-    end_address = route["legs"][-1]["end_address"]
-    response["request"] = {
-        "destination":{"query":end_address},
-        "origin":{"query":start_address},
-        "optimizeWaypoints":True,
-        "travelMode": "WALKING",
-        "unitSystem": 1,
-        "waypoints":[{"location":{"query":addr},"stopover":True} for addr in waypoints]
-    }
-    for route in response["routes"]:
-        route["bounds"] = {
-            "east": route["bounds"]["northeast"]["lng"],
-            "north": route["bounds"]["northeast"]["lat"],
-            "south": route["bounds"]["southwest"]["lat"],
-            "west": route["bounds"]["southwest"]["lng"]
-        }
-        for leg in route["legs"]:
-            leg["start_location"] = minimize_gps(leg["start_location"])
-            leg["end_location"] = minimize_gps(leg["end_location"])
-            for step in leg["steps"]:
-                step["start_location"] = minimize_gps(step["start_location"])
-                step["end_location"] = minimize_gps(step["end_location"])
-                step["instructions"] = step["html_instructions"]
-                step["path"] = [step["start_location"], step["end_location"]]
-        route["overview_path"] = [route["legs"][0]["start_location"], route["legs"][-1]["end_location"]]
-    return response
+def save_team(item, **kwargs):
+    ddb_save(TEAM_TABLE, item, **kwargs)
+
+def save_route(item, **kwargs):
+    ddb_save(ROUTE_TABLE, item, **kwargs)
+
+def save_image(item, **kwargs):
+    ddb_save(IMAGE_TABLE, item, **kwargs)
 
 def deepload(s):
     while True:
@@ -143,7 +93,7 @@ def view_route(event, *args, **kwargs):
         return make_404(event)
     return {
         "route_id":route_id,
-        "js_data":json.dumps(response, sort_keys=True, separators=(',',':')),
+        "js_data":dumps(response, sort_keys=True, separators=(',',':')),
         "distance":format_distance(item["distance"]),
         "duration":format_time(item["duration"]),
         "addresses":item["addresses"]
@@ -215,7 +165,7 @@ def list_routes(last_route=None):
 def load_route_from_db(route_id):
     try:
         item = ROUTE_TABLE.get_item(Key={"route_id":route_id})["Item"]
-        if item.get("route") and convert_python_route_to_javascript(item["route"]):
+        if item.get("route") and gmaps.convert_python_route_to_javascript(deepload(item["route"])):
             # Make sure it contains a result and that the result can be parsed.
             return item
     except:
@@ -259,25 +209,39 @@ def load_route(addresses=None, route_id=None):
             print("Route {} loaded from database.".format(route_id))
             if ensure_all_fields_filled(item):
                 print("Route entry contents updated.  Updating database.")
-                ROUTE_TABLE.put_item(Item=item)
+                save_route(item)
         else:
             print("Loading route {} from google maps.".format(route_id))
-            route = load_route_from_google(addresses)
+            route = gmaps.load_route_from_google(addresses)
             item = {
                 "route_id":route_id,
-                "route":json.dumps(route, separators=(',',':'))
+                "route":dumps(route, separators=(',',':'))
             }
             ensure_all_fields_filled(item)
-            ROUTE_TABLE.put_item(Item=item)
+            save_route(item)
             print("Route {} loaded from google maps and cached.".format(route_id))
     else:
         item = load_route_from_db(route_id)
         if ensure_all_fields_filled(item):
             print("Route entry contents updated.  Updating database.")
-            ROUTE_TABLE.put_item(Item=item)
+            save_route(item)
         if not item:
             return route_id, None, None
-    return route_id, convert_python_route_to_javascript(item["route"]), item
+    return route_id, gmaps.convert_python_route_to_javascript(deepload(item["route"])), item
+
+def load_image(shortcode):
+    item = load_image_from_db(shortcode)
+    if not item:
+        item = {"shortcode":shortcode}
+    return item
+
+def load_image_from_db(shortcode):
+    try:
+        item = IMAGE_TABLE.get_item(Key={"shortcode":shortcode})["Item"]
+        return item
+    except:
+        traceback.print_exc()
+    return None
 
 def load_team_from_db(team_id):
     try:
@@ -291,16 +255,129 @@ def get_team_id():
     uuid = str(uuid.uuid1()).replace('-','').lower()
     return uuid
 
+def ensure_team_fields_filled(team):
+    if not team:
+        return team
+    for attr in ["team_name"]:
+        team[attr] = team.get(attr, None)
+    return team
+
 def load_team(team_id=None):
-    team_id = team_id if team_id else get_team_id()
-    item = load_team_from_db(team_id)
-    if item:
-        print("Team {} loaded from database.".format(team_id))
+    item = None
+    if team_id:
+        item = load_team_from_db(team_id)
+        if item:
+            print("Team {} loaded from database.".format(team_id))
+            ensure_team_fields_filled(item)
+            item = deepload(item)
+        else:
+            print("Team {} not found.".format(team_id))
     else:
         print("Creating new team {}.".format(team_id))
-        item = {
-            "team_id":team_id,
-        }
-        TEAM_TABLE.put_item(Item=item)
-    item = deepload(item)
+        item = {"team_id":team_id}
+        save_team(item)
+    ensure_team_fields_filled(item)
     return item
+
+def get_team_header(event, team_id):
+    cookie = http.cookies.SimpleCookie()
+    name = TEAM_COOKIE_KEY
+    cookie[name] = team_id
+    cookie[name]["path"] = "/"
+    cookie[name]["domain"] = event["headers"]["Host"]
+    cookie[name]["secure"] = True
+    cookie[name]["httponly"] = True
+    expires_at = datetime.now() + timedelta(days=7)
+    age_seconds = 7*24*60*60
+    cookie[name]["max-age"] = age_seconds
+    cookie[name]["expires"] = expires_at.strftime("%a, %d %b %Y %H:%M:%S GMT")
+    blob = cookie.output(header="").strip()
+    return {"Set-Cookie":blob}
+
+def team_login(event):
+    params = event.get("multiValueQueryStringParameters",{})
+    params = params if params else {}
+    team_ids = params.get("team_id",[])
+    if not team_ids:
+        return make_404(event)
+    team_id = team_ids[0]
+    if not team_id:
+        return make_404(event)
+    team = load_team(team_id)
+    if not team:
+        return make_404(event)
+    cookie_header = get_team_header(event, team_id)
+    return redirect(events.base_url(event), headers=cookie_header)
+
+def get_cookies(event):
+    cookie_dict = {}
+    try:
+        cookies = http.cookies.SimpleCookie()
+        cookies.load(event["headers"].get("Cookie",""))
+        for k in cookies:
+            morsel = cookies[k]
+            cookie_dict[morsel.key] = morsel.value
+    except:
+        traceback.print_exc()
+    return cookie_dict
+
+def get_team_from_event(event):
+    cookies = get_cookies(event)
+    if not cookies.get(TEAM_COOKIE_KEY):
+        return None
+    team_id = cookies[TEAM_COOKIE_KEY]
+    return load_team(team_id)
+
+def add_team_to_event(info, *args, **kwargs):
+    team = get_team_from_event(info["event"])
+    info["event"]["team"] = team
+    return info
+
+def scrape_team_images(team):
+    team_name = team.get("team_name")
+    if not team_name:
+        return
+    images = team.get("images")
+    team["images"] = images if images else []
+    images = team["images"]
+    image_codes = [x["shortcode"] for x in images]
+    all_image_codes = instagram.get_images_from_profile(team_name)
+    new_image_codes = [x for x in all_image_codes if x not in image_codes]
+    new_images = []
+    for image_code in new_image_codes:
+        image = instagram.get_image_info(image_code)
+        if image.get("street_address") and image.get("city_name") and image.get("zip_code"):
+            address = "{street_address}, {city_name} {zip_code}".format(**image)
+            image["coordinates"] = gmaps.load_coordinates_from_google(address)
+        new_images.append(image)
+    team["images"].extend(new_images)
+    if new_images:
+        save_team(team)
+
+@loader_for("team_images.html")
+def team_images_handler(event, *args, **kwargs):
+    if not event["team"]:
+        return make_404(event)
+    team = event["team"]
+    scrape_team_images(team)
+    images = team.get("images")
+    images = images if images else []
+    for image in images:
+        image["pretty"] = {}
+        if image.get("street_address") and image.get("city_name") and image.get("zip_code"):
+            image["pretty"]["address"] = "{street_address}, {city_name} {zip_code}".format(**image)
+        else:
+            image["pretty"]["address"] = "<unknown>"
+        image["pretty"]["time"] = datetime.fromtimestamp(int(image["timestamp"])).strftime("%c")
+        image["pretty"]["caption"] = image.get("caption")
+        image["pretty"]["caption"] = image["pretty"]["caption"] if image["pretty"]["caption"] else "<no caption>"
+        image["pretty"]["caption"] = image["pretty"]["caption"] if len(image["pretty"]["caption"]) < 100 else (image["pretty"]["caption"][:97]+"...")
+        image["pretty"]["address"] = "{street_address}, {city_name} {zip_code}".format(**image)
+        image["pretty"]["url"] = instagram.image_url(image["shortcode"])
+        image["pretty"]["thumbnail"] = {}
+        if image["sizes"]:
+            thumbnail = image["sizes"][0]
+            image["pretty"]["thumbnail"]["height"] = thumbnail["config_height"]
+            image["pretty"]["thumbnail"]["width"] = thumbnail["config_width"]
+            image["pretty"]["thumbnail"]["src"] = thumbnail["src"]
+    return {"team":team, "images":images}

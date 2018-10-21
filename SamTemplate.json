@@ -11,19 +11,11 @@
                 "ProvisionedThroughput": {"ReadCapacityUnits": "1","WriteCapacityUnits": "1"}
             }
         },
-        "AddressTable":{
+        "ImageTable":{
             "Type":"AWS::DynamoDB::Table",
             "Properties":{
-                "AttributeDefinitions": [{"AttributeName": "address","AttributeType": "S"}],
-                "KeySchema": [{"AttributeName": "address","KeyType": "HASH"}],
-                "ProvisionedThroughput": {"ReadCapacityUnits": "1","WriteCapacityUnits": "1"}
-            }
-        },
-        "SpotTable":{
-            "Type":"AWS::DynamoDB::Table",
-            "Properties":{
-                "AttributeDefinitions": [{"AttributeName": "team_id","AttributeType": "S"},{"AttributeName": "timestamp","AttributeType": "S"}],
-                "KeySchema": [{"AttributeName": "team_id","KeyType": "HASH"},{"AttributeName": "timestamp","KeyType": "RANGE"}],
+                "AttributeDefinitions": [{"AttributeName": "shortcode","AttributeType": "S"}],
+                "KeySchema": [{"AttributeName": "shortcode","KeyType": "HASH"}],
                 "ProvisionedThroughput": {"ReadCapacityUnits": "1","WriteCapacityUnits": "1"}
             }
         },
@@ -64,14 +56,12 @@
                                 "dynamodb:List*"
                             ],
                             "Resource": [
-                                { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AddressTable}"},
-                                { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AddressTable}/*"},
-                                { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${SpotTable}"},
-                                { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${SpotTable}/*"},
                                 { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${RouteTable}"},
                                 { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${RouteTable}/*"},
                                 { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${TeamTable}"},
-                                { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${TeamTable}/*"}
+                                { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${TeamTable}/*"},
+                                { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ImageTable}"},
+                                { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ImageTable}/*"}
                             ],
                             "Effect": "Allow"
                         },
@@ -128,9 +118,8 @@
                     "Variables":{
                         "STACK_NAME":{"Ref":"AWS::StackName"},
                         "TEAM_TABLE":{"Ref":"TeamTable"},
-                        "ADDRESS_TABLE":{"Ref":"AddressTable"},
                         "ROUTE_TABLE":{"Ref":"RouteTable"},
-                        "SPOT_TABLE":{"Ref":"SpotTable"}
+                        "IMAGE_TABLE":{"Ref":"ImageTable"}
                     }
                 },
                 "Events": {
