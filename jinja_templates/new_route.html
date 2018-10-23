@@ -13,13 +13,13 @@
   <div id="places">
     <form onsubmit="addRoute();return false;">
       Enter locations:<br>
-      <textarea name="placesArea" id="placesArea" rows="10" cols="100">River Field 400-442 N 24th St Philadelphia, PA 19130
+      <textarea name="placesArea" id="placesArea" rows="10" cols="100">{% if addresses is defined and addresses %}{{addresses}}{% else %}River Field 400-442 N 24th St Philadelphia, PA 19130
 3111 W Lehigh Ave, Philadelphia, PA 19132
 2900 State Rd, Drexel Hill, PA 19026
 Spring Garden St, Philadelphia, PA 19130
 Reservoir Dr, Philadelphia, PA 19119
-1 Lincoln Financial Field Way, Philadelphia, PA 19148</textarea><br>
-      Return to start: <input type="checkbox" id="returnToStart" checked><br>
+1 Lincoln Financial Field Way, Philadelphia, PA 19148{% endif %}</textarea><br>
+      Return to start: <input type="checkbox" id="returnToStart" {% if return_to_start is defined and return_to_start %}checked{% endif %}><br>
       <input type="submit">
     </form>
   </div>

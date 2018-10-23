@@ -15,7 +15,7 @@ from sneks.sam import events
 from sneks.sam.response_core import make_response, redirect
 from sneks.sam.ui_stuff import loader_for, make_404
 
-GMAPS_API_KEY = "AIzaSyDELQPc2vQNkk81bcM3f-4nOmcKuRbIV6k"
+GMAPS_API_KEY = os.environ["GMAPS_SECRET"]
 
 TEAM_COOKIE_KEY = "astronav-team"
 

@@ -55,3 +55,4 @@ def get_image_info(shortcode):
         for piece in ["street_address", "city_name", "zip_code"]:
             info[piece] = address.get(piece)
     return info
+

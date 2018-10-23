@@ -15,6 +15,7 @@
 {% endfor %}
 <h2>End: <a href="https://www.google.com/maps/dir//{{addresses[-1]}}" target="_blank">{{ addresses[-1] }}</a></h2>
 <h3><a href="https://www.google.com/maps/dir/{%for address in addresses%}/{{address}}{%endfor%}" target="_blank">[Open all in gmaps.]</a></h3>
+<h3><a href="{{ base_path }}/new_route.html?addresses={{ addresses_for_copy }}" target="_blank">[Copy to new route.]</a></h3>
 <!-- https://developers.google.com/maps/documentation/javascript/tutorial -->
 <div class="map" id="map"></div>
 <div class="directions" id="directions"></div>

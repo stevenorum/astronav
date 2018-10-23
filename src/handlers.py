@@ -1,3 +1,4 @@
+import base64
 import boto3
 import copy
 from datetime import datetime, timedelta
@@ -11,6 +12,7 @@ from math import radians, degrees, cos, sin, asin, sqrt, fabs, log, tan, pi, ata
 import os
 import traceback
 import urllib
+import urllib.parse
 import uuid
 from sneks.sam import events
 from sneks.sam.response_core import make_response, redirect
@@ -43,6 +45,8 @@ def make_ddb_safe(item):
         item = Decimal(item)
     if item is None:
         item = "null"
+    if item == "":
+        item = json.dumps("")
     return item
 
 def deepload(s):
@@ -100,11 +104,13 @@ def view_route(event, *args, **kwargs):
     if not response:
         return make_404(event)
     return {
+        "GMAPS_API_KEY":os.environ["GMAPS_PUBLIC"],
         "route_id":route_id,
         "js_data":dumps(response, sort_keys=True, separators=(',',':')),
         "distance":format_distance(item["distance"]),
         "duration":format_time(item["duration"]),
-        "addresses":item["addresses"]
+        "addresses":item["addresses"],
+        "addresses_for_copy":base64.urlsafe_b64encode(json.dumps(item["addresses"]).encode("utf-8")).decode("utf-8")
     }
 
 def format_distance(meters):
@@ -132,8 +138,24 @@ def format_time(seconds):
     else:
         return "{:0>2d}:{:0>2d}".format(hours, minutes)
 
+@loader_for("new_route.html")
+def new_route_handler(event, *args, **kwargs):
+    params = event.get("multiValueQueryStringParameters",{})
+    params = params if params else {}
+    addresses = params.get("addresses",[])
+    response = {"return_to_start":True}
+    if addresses:
+        addresses = json.loads(base64.urlsafe_b64decode(addresses[0].encode("utf-8")).decode("utf-8"))
+    if addresses:
+        if addresses[0] == addresses[-1]:
+            addresses = addresses[:-1]
+        else:
+            response["return_to_start"] = False
+        response["addresses"] = "\n".join(addresses)
+    return response
+
 @loader_for("route_list.html")
-def list_routes_handler(event, *args, **kwargs):
+def route_list_handler(event, *args, **kwargs):
     params = event.get("multiValueQueryStringParameters",{})
     params = params if params else {}
     last_routes = params.get("last_route",[])

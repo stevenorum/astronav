@@ -11,14 +11,16 @@ import traceback
 
 env = Environment(loader=FileSystemLoader(os.path.join(os.environ["LAMBDA_TASK_ROOT"], "jinja_templates")))
 
-try:
-    with open(os.path.join(os.environ["LAMBDA_TASK_ROOT"], "static_config.json")) as f:
-        data = json.load(f)
-        for k in data:
-            os.environ[k] = data[k].strip()
-except:
-    traceback.print_exc()
-    print("Unable to add static info to the path.  Falling back to the bundled defaults.")
+conf_files = ["static_config.json", "extra_params.json"]
+for filename in conf_files:
+    try:
+        with open(os.path.join(os.environ["LAMBDA_TASK_ROOT"], filename)) as f:
+            data = json.load(f)
+            for k in data:
+                os.environ[k] = data[k].strip()
+    except:
+        traceback.print_exc()
+        print("Unable to load configuration file '{}'".format(filename))
 
 content_types = {
     "ico":"image/x-icon",

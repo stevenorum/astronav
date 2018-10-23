@@ -6,6 +6,7 @@ phases:
   pre_build:
     commands:
       - bash /root/scripts/setup_build_dir.sh
+      - echo "$BUILD_PARAMS" > build/extra_params.json
   build:
     commands:
       - bash /root/scripts/bundle_lambda.sh
