@@ -15,8 +15,9 @@ import urllib
 import urllib.parse
 import uuid
 from sneks.sam import events
-from sneks.sam.response_core import make_response, redirect
+from sneks.sam.response_core import make_response, redirect, ApiException
 from sneks.sam.ui_stuff import loader_for, make_404
+import time
 
 TEAM_COOKIE_KEY = "astronav-team"
 
@@ -175,13 +176,14 @@ def route_list_handler(event, *args, **kwargs):
 def list_routes(last_route=None):
     kwargs = {
         "Select":"SPECIFIC_ATTRIBUTES",
-        # "ProjectionExpression":"route_id, addresses, duration, distance",
-        "ProjectionExpression":"#RID, #ADR, #DUR, #DIS",
+        "ProjectionExpression":"#RID, #ADR, #DUR, #DIS, #CRE, #NAM",
         "ExpressionAttributeNames":{
             "#RID":"route_id",
             "#ADR":"addresses",
             "#DUR":"duration",
-            "#DIS":"distance"
+            "#DIS":"distance",
+            "#CRE":"created",
+            "#NAM":"name"
         }
     }
     if last_route:
@@ -206,7 +208,7 @@ def get_route_id(addresses):
     route_id = hashlib.md5("\n".join([a.strip().upper() for a in addresses]).encode("utf-8")).hexdigest()
     return route_id
 
-def ensure_all_fields_filled(item):
+def ensure_route_fields_filled(item):
     changed = False
     route = deepload(item["route"])
     if "addresses" not in item:
@@ -227,6 +229,15 @@ def ensure_all_fields_filled(item):
         item["duration"] = duration # seconds
         changed = True
         pass
+    if "created" not in item:
+        item["created"] = int(time.time())
+        changed = True
+    if "description" not in item:
+        if item["created"] == 1539997200:
+            item["description"] = "(Note: creation time was backfilled and was sometime between that time and October 23rd.)"
+        else:
+            item["description"] = ""
+        changed = True
     return changed
 
 def load_route(addresses=None, route_id=None):
@@ -237,22 +248,32 @@ def load_route(addresses=None, route_id=None):
         item = load_route_from_db(route_id)
         if item:
             print("Route {} loaded from database.".format(route_id))
-            if ensure_all_fields_filled(item):
+            if ensure_route_fields_filled(item):
                 print("Route entry contents updated.  Updating database.")
                 save_route(item)
         else:
             print("Loading route {} from google maps.".format(route_id))
-            route = gmaps.load_route_from_google(addresses)
+            try:
+                route = gmaps.load_route_from_google(addresses)
+            except:
+                if 'MAX_ROUTE_LENGTH_EXCEEDED' in traceback.format_exc():
+                    raise ApiException(data={"message":"Requested route too long.  Perhaps you need to specify cities/states for each address?"}, code=400)
+                raise
             item = {
                 "route_id":route_id,
-                "route":dumps(route, separators=(',',':'))
+                "route":dumps(route, separators=(',',':')),
+                "created":int(time.time())
             }
-            ensure_all_fields_filled(item)
-            save_route(item)
+            ensure_route_fields_filled(item)
+            try:
+                save_route(item)
+            except:
+                if 'Item size has exceeded the maximum allowed size' in traceback.format_exc():
+                    raise ApiException(data={"message":"Requested route's directions are too big.  Perhaps you need to specify cities/states for each address?"}, code=400)
             print("Route {} loaded from google maps and cached.".format(route_id))
     else:
         item = load_route_from_db(route_id)
-        if ensure_all_fields_filled(item):
+        if ensure_route_fields_filled(item):
             print("Route entry contents updated.  Updating database.")
             save_route(item)
         if not item:

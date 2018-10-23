@@ -2,7 +2,7 @@ import json
 
 import handlers
 
-from sneks.sam.response_core import PathMatcher, ListMatcher
+from sneks.sam.response_core import PathMatcher, ListMatcher, ResponseException
 from sneks.sam import ui_stuff
 
 STATIC_MATCHERS = [
@@ -30,4 +30,7 @@ DYNAMIC_MATCHERS = [
 MATCHERS = ListMatcher(STATIC_MATCHERS + DYNAMIC_MATCHERS)
 
 def lambda_handler(event, context):
-    return MATCHERS.handle_event(event)
+    try:
+        return MATCHERS.handle_event(event)
+    except ResponseException as e:
+        return e.response

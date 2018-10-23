@@ -23,6 +23,8 @@ Reservoir Dr, Philadelphia, PA 19119
       <input type="submit">
     </form>
   </div>
+  <div id="infomessage" class="alert alert-info text-center" role="alert" style="display: none;"></div>
+  <div id="errormessage" class="alert alert-danger text-center" role="alert" style="display: none;"></div>
   <div class="py-5 text-center">
     Some notes:<br>
     -The first address in the list is the start point.<br>
@@ -30,24 +32,29 @@ Reservoir Dr, Philadelphia, PA 19119
     -If 'Return to start' is checked, the first address is also used as the end point.<br>
     -All locations other than the start and end will likely be reordered to minimize travel time.<br>
     -The 'Route ID' that gets assigned to the route after creation is random and uniquely identifies this set of addresses.  You don't really need to think about it other than using it to link to the route.<br>
+    -Make sure to specify the city and state for each address.  If you don't, it's likely that Google will helpfully pick an address hundreds/thousands of miles away from the others, the directions between the two will be massive, and there'll be a database error when the system tries to save the route.  No impact to other stuff but it means that nothing will happen when you click the "Submit" button.
   </div>
 </div>
 <script>
 function addRoute() {
+    var errNode = $("#errormessage")[0];
+    var infNode = $("#infomessage")[0];
+    errNode.innerText = "";
+    errNode.style.display = "none";
+    infNode.innerText = "Working...";
+    infNode.style.display = "block";
     var addrs = document.getElementById("placesArea").value.trim().split(/\r?\n/);
     if (document.getElementById("returnToStart").checked && addrs[0] != addrs[addrs.length-1]) {
         addrs.push(addrs[0]);
     }
-    console.log(addrs);
     var request = {addresses: addrs};
-    console.log("REQUEST:");
-    console.log(request);
-
     // https://stackoverflow.com/questions/6396101/pure-javascript-send-post-data-without-a-form
     var xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function () {
+        console.log(this);
         if (this.readyState != 4) {return;}
         if (this.status == 200) {
+            infNode.innerText = "Redirecting...";
             console.log(this);
             console.log(this.responseText);
             var data = JSON.parse(this.responseText);
@@ -55,6 +62,26 @@ function addRoute() {
             console.log(data);
             if ('redirect' in data) {
                 window.location.replace(data['redirect']);
+            } else {
+                infNode.innerText = "";
+                infNode.style.display = "none";
+                errNode.innerText = "An very strange error occurred.  Retrying may or may not help.";
+                errNode.style.display = "block";
+            }
+        } else {
+            infNode.innerText = "";
+            infNode.style.display = "none";
+            if (this.status >= 500) {
+                errNode.innerText = "An unspecified error occurred.  Retrying may or may not help.";
+                errNode.style.display = "block";
+            } else if (this.status >= 400) {
+                var data = JSON.parse(this.responseText);
+                if ('message' in data) {
+                    errNode.innerText = data["message"];
+                } else {
+                    errNode.innerText = "An unspecified error occurred.  Retrying won't help.";
+                }
+                errNode.style.display = "block";
             }
         }
     };

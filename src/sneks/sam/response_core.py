@@ -95,3 +95,11 @@ class ListMatcher(EventMatcher):
             if resp[0]:
                 return resp
         return None, None
+
+class ResponseException(Exception):
+    def __init__(self, response):
+        self.response = response
+
+class ApiException(ResponseException):
+    def __init__(self, data={}, code=500):
+        self.response = make_response(body=data, code=code)

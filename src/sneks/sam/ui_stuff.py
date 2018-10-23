@@ -4,7 +4,7 @@ import os
 from functools import update_wrapper
 from jinja2 import Environment, FileSystemLoader
 from jinja2.exceptions import TemplateNotFound
-from sneks.sam.response_core import make_response, redirect
+from sneks.sam.response_core import make_response, redirect, ResponseException
 from sneks.sam import events
 from sneks import snekjson
 import traceback
@@ -137,4 +137,4 @@ def make_debug(event=None, context=None, headers={}, **kwargs):
     return make_response(body=get_debug_blob(event), headers=headers)
 
 def make_404(event=None, context=None, **kwargs):
-    return make_message("<p>I have no idea what you're talking about.</p><br><br><p>{}</p>".format(get_debug_blob(event)), event=event, heading="HTTP/404 !!1!", code=404)
+    raise ResponseException(make_message("<p>I have no idea what you're talking about.</p><br><br><p>{}</p>".format(get_debug_blob(event)), event=event, heading="HTTP/404 !!1!", code=404))
