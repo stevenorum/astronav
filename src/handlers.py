@@ -258,6 +258,8 @@ def load_route(addresses=None, route_id=None):
             except:
                 if 'MAX_ROUTE_LENGTH_EXCEEDED' in traceback.format_exc():
                     raise ApiException(data={"message":"Requested route too long.  Perhaps you need to specify cities/states for each address?"}, code=400)
+                elif 'MAX_WAYPOINTS_EXCEEDED' in traceback.format_exc():
+                    raise ApiException(data={"message":"Too many waypoints specified.  The maximum is 25, counting the start and end points."}, code=400)
                 raise
             item = {
                 "route_id":route_id,

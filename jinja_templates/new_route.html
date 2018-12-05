@@ -36,16 +36,37 @@ Reservoir Dr, Philadelphia, PA 19119
   </div>
 </div>
 <script>
-function addRoute() {
+
+var setMessages = function(infoMessage, errorMessage) {
     var errNode = $("#errormessage")[0];
     var infNode = $("#infomessage")[0];
-    errNode.innerText = "";
-    errNode.style.display = "none";
-    infNode.innerText = "Working...";
-    infNode.style.display = "block";
+    errNode.innerText = errorMessage;
+    errNode.style.display = (errorMessage.length == 0 ? "none" : "block");
+    infNode.innerText = infoMessage;
+    infNode.style.display = (infoMessage.length == 0 ? "none" : "block");
+}
+
+var errorMessage = function(message) {
+    setMessages("", message);
+}
+
+var infoMessage = function(message) {
+    setMessages(message, "");
+}
+
+var clearMessages = function() {
+    setMessages("", "");
+}
+
+var addRoute = function() {
+    infoMessage("Working...");
     var addrs = document.getElementById("placesArea").value.trim().split(/\r?\n/);
     if (document.getElementById("returnToStart").checked && addrs[0] != addrs[addrs.length-1]) {
         addrs.push(addrs[0]);
+    }
+    if (addrs.length > 25) {
+        errorMessage("Too many waypoints provided.  Maximum is 25, counting start and end (sorry, Google's rules, not mine).");
+        return;
     }
     var request = {addresses: addrs};
     // https://stackoverflow.com/questions/6396101/pure-javascript-send-post-data-without-a-form
@@ -54,7 +75,7 @@ function addRoute() {
         console.log(this);
         if (this.readyState != 4) {return;}
         if (this.status == 200) {
-            infNode.innerText = "Redirecting...";
+            infoMessage("Redirecting...");
             console.log(this);
             console.log(this.responseText);
             var data = JSON.parse(this.responseText);
@@ -63,25 +84,19 @@ function addRoute() {
             if ('redirect' in data) {
                 window.location.replace(data['redirect']);
             } else {
-                infNode.innerText = "";
-                infNode.style.display = "none";
-                errNode.innerText = "An very strange error occurred.  Retrying may or may not help.";
-                errNode.style.display = "block";
+                errorMessage("An very strange error occurred.  Retrying may or may not help.");
             }
         } else {
-            infNode.innerText = "";
-            infNode.style.display = "none";
+            clearMessages();
             if (this.status >= 500) {
-                errNode.innerText = "An unspecified error occurred.  Retrying may or may not help.";
-                errNode.style.display = "block";
+                errorMessage("An unspecified error occurred.  Retrying may or may not help.");
             } else if (this.status >= 400) {
                 var data = JSON.parse(this.responseText);
                 if ('message' in data) {
-                    errNode.innerText = data["message"];
+                    errorMessage(data["message"]);
                 } else {
-                    errNode.innerText = "An unspecified error occurred.  Retrying won't help.";
+                    errorMessage("An unspecified error occurred.  Retrying won't help.");
                 }
-                errNode.style.display = "block";
             }
         }
     };
