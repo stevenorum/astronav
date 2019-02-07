@@ -1,5 +1,3 @@
-import json
-
 import handlers
 
 from sneks.sam.response_core import PathMatcher, ListMatcher, ResponseException

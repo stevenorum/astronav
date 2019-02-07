@@ -2,14 +2,16 @@ version: 0.2
 phases:
   install:
     commands:
-      - bash /root/scripts/install_dependencies.sh
+      - yum install -y python36-devel
+      - pip3 install --upgrade sneks
+      - sneks install-dependencies
   pre_build:
     commands:
-      - bash /root/scripts/setup_build_dir.sh
+      - sneks setup-build-dir
       - echo "$BUILD_PARAMS" > build/extra_params.json
   build:
     commands:
-      - bash /root/scripts/bundle_lambda.sh
+      - sneks bundle-lambda
 artifacts:
   files:
     - NewSamTemplate.json

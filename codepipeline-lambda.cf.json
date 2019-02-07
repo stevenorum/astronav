@@ -32,7 +32,7 @@
         "BuildImage": {
             "Type": "String",
             "Description": "Docker build image to use for this stack.",
-            "Default": ""
+            "Default": "aws/codebuild/eb-python-3.4-amazonlinux-64:2.3.2"
         },
         "GmapsPublicKey": {
             "Type": "String",
@@ -46,9 +46,6 @@
     "Conditions":{
         "ChildStackNameProvided":{
             "Fn::Not":[{"Fn::Equals":["",{"Ref":"ChildStackName"}]}]
-        },
-        "BuildImageProvided":{
-            "Fn::Not":[{"Fn::Equals":["",{"Ref":"BuildImage"}]}]
         }
     },
     "Resources": {
@@ -358,11 +355,7 @@
                 },
                 "Environment": {
                     "ComputeType": "BUILD_GENERAL1_SMALL",
-                    "Image":{"Fn::If":[
-                        "BuildImageProvided",
-                        {"Ref":"BuildImage"},
-                        {"Fn::ImportValue":"amazonlinux-codebuild-image-cetacea"}
-                    ]},
+                    "Image":{"Ref":"BuildImage"},
                     "PrivilegedMode": false,
                     "Type": "LINUX_CONTAINER",
                     "EnvironmentVariables": [
