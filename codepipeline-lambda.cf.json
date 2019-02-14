@@ -26,8 +26,8 @@
         },
         "ChildStackName": {
             "Type": "String",
-            "Description": "Name of the stack this will create.  Defaults to <PackageName>-<PackageBranch>",
-            "Default": ""
+            "Description": "Name of the pipeline, build project, and stack this will create.  I recommend <PackageName>-<PackageBranch>",
+            "MinLength": 1
         },
         "BuildImage": {
             "Type": "String",
@@ -41,11 +41,6 @@
         "GmapsSecretKey": {
             "Type": "String",
             "Description": "Google Maps API key that will be used internally by AstroNav to look up directions.  It will not be shown to users."
-        }
-    },
-    "Conditions":{
-        "ChildStackNameProvided":{
-            "Fn::Not":[{"Fn::Equals":["",{"Ref":"ChildStackName"}]}]
         }
     },
     "Resources": {
@@ -86,13 +81,13 @@
                             "Effect": "Allow",
                             "Resource": [
                                 {
-                                    "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${PackageName}-${PackageBranch}"
+                                    "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ChildStackName}"
                                 },
                                 {
-                                    "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${PackageName}-${PackageBranch}:*"
+                                    "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ChildStackName}:*"
                                 },
                                 {
-                                    "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${PackageName}-${PackageBranch}/*"
+                                    "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ChildStackName}/*"
                                 }
                             ],
                             "Action": [
@@ -349,7 +344,7 @@
                     "NamespaceType": "BUILD_ID",
                     "Packaging": "NONE",
                     "Path": {
-                        "Fn::Sub": "${PackageName}-${PackageBranch}"
+                        "Fn::Sub": "${ChildStackName}"
                     },
                     "Type": "S3"
                 },
@@ -387,7 +382,7 @@
                     "Fn::Sub": "CodeBuild project for branch ${PackageBranch} of package ${PackageName}"
                 },
                 "Name": {
-                    "Fn::Sub": "${PackageName}-${PackageBranch}"
+                    "Fn::Sub": "${ChildStackName}"
                 },
                 "ServiceRole": {
                     "Fn::GetAtt": [
@@ -422,7 +417,7 @@
                     "Type": "S3"
                 },
                 "Name": {
-                    "Fn::Sub": "${PackageName}-${PackageBranch}"
+                    "Fn::Sub": "${ChildStackName}"
                 },
                 "RestartExecutionOnUpdate": true,
                 "RoleArn": {
@@ -514,10 +509,10 @@
                                     "StackName": {"Fn::If":[
                                         "ChildStackNameProvided",
                                         {"Ref":"ChildStackName"},
-                                        {"Fn::Sub": "${PackageName}-${PackageBranch}"}
+                                        {"Fn::Sub": "${ChildStackName}"}
                                     ]},
                                     "ChangeSetName": {
-                                        "Fn::Sub": "${PackageName}-${PackageBranch}-ChangeSet"
+                                        "Fn::Sub": "${ChildStackName}-ChangeSet"
                                     },
                                     "RoleArn": {
                                         "Fn::GetAtt": [
@@ -550,13 +545,9 @@
                                 },
                                 "Configuration": {
                                     "ActionMode": "CHANGE_SET_EXECUTE",
-                                    "StackName": {"Fn::If":[
-                                        "ChildStackNameProvided",
-                                        {"Ref":"ChildStackName"},
-                                        {"Fn::Sub": "${PackageName}-${PackageBranch}"}
-                                    ]},
+                                    "StackName": {"Ref":"ChildStackName"},
                                     "ChangeSetName": {
-                                        "Fn::Sub": "${PackageName}-${PackageBranch}-ChangeSet"
+                                        "Fn::Sub": "${ChildStackName}-ChangeSet"
                                     },
                                 },
                                 "InputArtifacts": [
