@@ -506,11 +506,7 @@
                                 },
                                 "Configuration": {
                                     "ActionMode": "CHANGE_SET_REPLACE",
-                                    "StackName": {"Fn::If":[
-                                        "ChildStackNameProvided",
-                                        {"Ref":"ChildStackName"},
-                                        {"Fn::Sub": "${ChildStackName}"}
-                                    ]},
+                                    "StackName": {"Ref":"ChildStackName"},
                                     "ChangeSetName": {
                                         "Fn::Sub": "${ChildStackName}-ChangeSet"
                                     },
