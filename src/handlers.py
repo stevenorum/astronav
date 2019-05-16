@@ -94,6 +94,12 @@ def store_route(event, *args, **kwargs):
     # return {"route_id":route_id,"route_result":result}
     return make_response({"redirect":events.base_path(event) + "/route_map.html?route_id={}".format(route_id)})
 
+def add_created(route):
+    dt = datetime.fromtimestamp(route["created"])
+    dt_string = dt.strftime("%Y/%m/%d %H:%M:%S")
+    route["created_string"] = dt_string
+    return route
+
 @loader_for("route_map.html")
 def view_route(event, *args, **kwargs):
     params = event.get("multiValueQueryStringParameters",{})
@@ -167,6 +173,7 @@ def route_list_handler(event, *args, **kwargs):
     routes, new_last_route = list_routes(last_route=last_route)
     routes = [r for r in routes if r.get("addresses")]
     for route in routes:
+        add_created(route)
         route["addresses"] = deepload(route["addresses"])
         route["num_locations"] = len(route["addresses"])
         route["distance"] = format_distance(route.get("distance")) if route.get("distance") else "???"

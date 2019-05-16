@@ -8,6 +8,7 @@
     <thead>
     <tr>
       <th scope="col">Route ID</th>
+      <th scope="col">Created</th>
       <th scope="col">Start</th>
       <th scope="col">End</th>
       <th scope="col"># places</th>
@@ -19,6 +20,7 @@
     {% for route in routes %}
     <tr>
       <td scope="row"><a href="{{base_path}}/route_map.html?route_id={{route['route_id']}}">{{ route['route_id'][:4] }}...</a></td>
+      <td>{{ route['created_string'] }}</td>
       <td>{{ route['addresses'][0] }}</td>
       <td>{{ route['addresses'][-1] }}</td>
       <td>{{ route['num_locations'] }}</td>
