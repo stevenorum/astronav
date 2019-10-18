@@ -180,6 +180,24 @@ def route_list_handler(event, *args, **kwargs):
         route["duration"] = format_time(route.get("duration")) if route.get("duration") else "???"
     return {"routes":routes,"last_route":new_last_route}
 
+@loader_for("route_list.html")
+def route_list_all_handler(event, *args, **kwargs):
+    all_routes = []
+    last_route = None
+    all_routes, last_route = list_routes(last_route=last_route)
+    while last_route:
+        routes, last_route = list_routes(last_route=last_route)
+        all_routes.extend(routes)
+    routes = [r for r in routes if r.get("addresses")]
+    routes.sort(key=lambda x: x.get("created",0, reverse=True))
+    for route in routes:
+        add_created(route)
+        route["addresses"] = deepload(route["addresses"])
+        route["num_locations"] = len(route["addresses"])
+        route["distance"] = format_distance(route.get("distance")) if route.get("distance") else "???"
+        route["duration"] = format_time(route.get("duration")) if route.get("duration") else "???"
+    return {"routes":routes,"this_page":"all_routes.html"}
+
 def list_routes(last_route=None):
     kwargs = {
         "Select":"SPECIFIC_ATTRIBUTES",
