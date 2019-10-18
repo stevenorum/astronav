@@ -189,7 +189,7 @@ def route_list_all_handler(event, *args, **kwargs):
         routes, last_route = list_routes(last_route=last_route)
         all_routes.extend(routes)
     routes = [r for r in routes if r.get("addresses")]
-    routes.sort(key=lambda x: x.get("created",0, reverse=True))
+    routes.sort(key=lambda x: x.get("created",0), reverse=True)
     for route in routes:
         add_created(route)
         route["addresses"] = deepload(route["addresses"])
