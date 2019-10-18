@@ -188,7 +188,7 @@ def route_list_all_handler(event, *args, **kwargs):
     while last_route:
         routes, last_route = list_routes(last_route=last_route)
         all_routes.extend(routes)
-    routes = [r for r in routes if r.get("addresses")]
+    routes = [r for r in all_routes if r.get("addresses")]
     routes.sort(key=lambda x: x.get("created",0), reverse=True)
     for route in routes:
         add_created(route)
