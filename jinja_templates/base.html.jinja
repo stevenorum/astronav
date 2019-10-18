@@ -1,4 +1,5 @@
 {% set this_page = "index.html" if this_page is not defined else this_page %}
+{% set this_page_ = this_page if this_page_ is not defined else this_page_ %}
 {% set error_messages = [] if error_messages is not defined else error_messages %}
 {% set warning_messages = [] if warning_messages is not defined else warning_messages %}
 {% set info_messages = [] if info_messages is not defined else info_messages %}
@@ -48,10 +49,10 @@
             <li class="nav-item{{' active' if this_page == 'index.html' else ''}}">
               <a class="nav-link" href="{{ base_path }}/">[Home]</a>
             </li>
-            <li class="nav-item{{' active' if this_page == 'route_list.html' else ''}}">
+            <li class="nav-item{{' active' if this_page_ == 'route_list.html' else ''}}">
               <a class="nav-link" href="{{ base_path }}/route_list.html">[List routes]</a>
             </li>
-            <li class="nav-item{{' active' if this_page == 'all_routes.html' else ''}}">
+            <li class="nav-item{{' active' if this_page_ == 'all_routes.html' else ''}}">
               <a class="nav-link" href="{{ base_path }}/all_routes.html">[All routes]</a>
             </li>
             <li class="nav-item{{' active' if this_page == 'new_route.html' else ''}}">

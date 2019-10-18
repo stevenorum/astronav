@@ -196,7 +196,7 @@ def route_list_all_handler(event, *args, **kwargs):
         route["num_locations"] = len(route["addresses"])
         route["distance"] = format_distance(route.get("distance")) if route.get("distance") else "???"
         route["duration"] = format_time(route.get("duration")) if route.get("duration") else "???"
-    return {"routes":routes,"this_page":"all_routes.html"}
+    return {"routes":routes,"this_page_":"all_routes.html"}
 
 def list_routes(last_route=None):
     kwargs = {
