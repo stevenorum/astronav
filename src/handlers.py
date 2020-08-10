@@ -6,7 +6,6 @@ from decimal import Decimal
 import gmaps
 import hashlib
 import http.cookies
-import instagram
 import json
 from math import radians, degrees, cos, sin, asin, sqrt, fabs, log, tan, pi, atan2
 import os
@@ -19,11 +18,7 @@ from sneks.sam.response_core import make_response, redirect, ApiException
 from sneks.sam.ui_stuff import loader_for, make_404
 import time
 
-TEAM_COOKIE_KEY = "astronav-team"
-
-TEAM_TABLE = boto3.resource("dynamodb").Table(os.environ["TEAM_TABLE"])
 ROUTE_TABLE = boto3.resource("dynamodb").Table(os.environ["ROUTE_TABLE"])
-IMAGE_TABLE = boto3.resource("dynamodb").Table(os.environ["IMAGE_TABLE"])
 
 def make_json_safe(item):
     if isinstance(item, list):
@@ -40,14 +35,20 @@ def dumps(obj, *args, **kwargs):
 def make_ddb_safe(item):
     if isinstance(item, list):
         item = [make_ddb_safe(e) for e in item]
-    if isinstance(item, dict):
+    elif isinstance(item, dict):
         item = {k:make_ddb_safe(item[k]) for k in item}
-    if isinstance(item, float):
+    elif isinstance(item, float):
         item = Decimal(item)
-    if item is None:
+    elif item is None:
         item = "null"
-    if item == "":
+    elif item == "":
         item = json.dumps("")
+    elif isinstance(item, str):
+        pass
+    elif isinstance(item, int):
+        pass
+    else:
+        print(item)
     return item
 
 def deepload(s):
@@ -72,26 +73,20 @@ def ddb_save(table, item, **kwargs):
         traceback.print_exc()
         raise
 
-def save_team(item, **kwargs):
-    ddb_save(TEAM_TABLE, item, **kwargs)
-
 def save_route(item, **kwargs):
     ddb_save(ROUTE_TABLE, item, **kwargs)
 
-def save_image(item, **kwargs):
-    ddb_save(IMAGE_TABLE, item, **kwargs)
-
 def store_route(event, *args, **kwargs):
     body = deepload(event["body"])
+    superoptimize = body.get("superoptimize", False)
     if "addresses" in body:
-        route_id, response, item = load_route(addresses=body["addresses"])
+        route_id, response, item = load_route(addresses=body["addresses"], superoptimize=superoptimize)
     elif "route_id" in body:
         route_id, response, item = load_route(route_id=body["route_id"])
     else:
         return make_404(event)
     if not response:
         return make_404(event)
-    # return {"route_id":route_id,"route_result":result}
     return make_response({"redirect":events.base_path(event) + "/route_map.html?route_id={}".format(route_id)})
 
 def add_created(route):
@@ -117,6 +112,7 @@ def view_route(event, *args, **kwargs):
         "distance":format_distance(item["distance"]),
         "duration":format_time(item["duration"]),
         "addresses":item["addresses"],
+        "superoptimize":item.get("superoptimize", False),
         "addresses_for_copy":base64.urlsafe_b64encode(json.dumps(item["addresses"]).encode("utf-8")).decode("utf-8")
     }
 
@@ -201,14 +197,15 @@ def route_list_all_handler(event, *args, **kwargs):
 def list_routes(last_route=None):
     kwargs = {
         "Select":"SPECIFIC_ATTRIBUTES",
-        "ProjectionExpression":"#RID, #ADR, #DUR, #DIS, #CRE, #NAM",
+        "ProjectionExpression":"#RID, #ADR, #DUR, #DIS, #CRE, #NAM, #SUP",
         "ExpressionAttributeNames":{
             "#RID":"route_id",
             "#ADR":"addresses",
             "#DUR":"duration",
             "#DIS":"distance",
             "#CRE":"created",
-            "#NAM":"name"
+            "#NAM":"name",
+            "#SUP":"superoptimize"
         }
     }
     if last_route:
@@ -229,8 +226,11 @@ def load_route_from_db(route_id):
         traceback.print_exc()
     return None
 
-def get_route_id(addresses):
-    route_id = hashlib.md5("\n".join([a.strip().upper() for a in addresses]).encode("utf-8")).hexdigest()
+def get_route_id(addresses, superoptimize=False):
+    if superoptimize:
+        route_id = hashlib.md5("\n".join([a.strip().lower() for a in addresses]).encode("utf-8")).hexdigest()
+    else:
+        route_id = hashlib.md5("\n".join([a.strip().upper() for a in addresses]).encode("utf-8")).hexdigest()
     return route_id
 
 def ensure_route_fields_filled(item):
@@ -248,10 +248,9 @@ def ensure_route_fields_filled(item):
         item["distance"] = distance # meters
         changed = True
     if "duration" not in item:
-        duration = 0
-        for leg in route["legs"]:
-            duration += leg["duration"]["value"]
-        item["duration"] = duration # seconds
+        # Assumes 15 minutes per mile.
+        # Old method no longer works because some legs assume driving or bicycling
+        item["duration"] = int(item["distance"] / 1609.34 * 900)
         changed = True
         pass
     if "created" not in item:
@@ -263,13 +262,16 @@ def ensure_route_fields_filled(item):
         else:
             item["description"] = ""
         changed = True
+    if "superoptimize" not in item:
+        item["superoptimize"] = False
+        changed = True
     return changed
 
-def load_route(addresses=None, route_id=None):
+def load_route(addresses=None, route_id=None, superoptimize=False):
     if (not not addresses) == (not not route_id):
         raise RuntimeError("Must provide one and only one of addresses and route_id!")
     if addresses:
-        route_id = get_route_id(addresses)
+        route_id = get_route_id(addresses, superoptimize=superoptimize)
         item = load_route_from_db(route_id)
         if item:
             print("Route {} loaded from database.".format(route_id))
@@ -279,7 +281,7 @@ def load_route(addresses=None, route_id=None):
         else:
             print("Loading route {} from google maps.".format(route_id))
             try:
-                route = gmaps.load_route_from_google(addresses)
+                route = gmaps.load_route_from_google(addresses, superoptimize=superoptimize)
             except:
                 if 'MAX_ROUTE_LENGTH_EXCEEDED' in traceback.format_exc():
                     raise ApiException(data={"message":"Requested route too long.  Perhaps you need to specify cities/states for each address?"}, code=400)
@@ -289,7 +291,8 @@ def load_route(addresses=None, route_id=None):
             item = {
                 "route_id":route_id,
                 "route":dumps(route, separators=(',',':')),
-                "created":int(time.time())
+                "created":int(time.time()),
+                "superoptimize":superoptimize
             }
             ensure_route_fields_filled(item)
             try:
@@ -307,86 +310,6 @@ def load_route(addresses=None, route_id=None):
             return route_id, None, None
     return route_id, gmaps.convert_python_route_to_javascript(deepload(item["route"])), item
 
-def load_image(shortcode):
-    item = load_image_from_db(shortcode)
-    if not item:
-        item = {"shortcode":shortcode}
-    return item
-
-def load_image_from_db(shortcode):
-    try:
-        item = IMAGE_TABLE.get_item(Key={"shortcode":shortcode})["Item"]
-        return item
-    except:
-        traceback.print_exc()
-    return None
-
-def load_team_from_db(team_id):
-    try:
-        item = TEAM_TABLE.get_item(Key={"team_id":team_id})["Item"]
-        return item
-    except:
-        traceback.print_exc()
-    return None
-
-def get_team_id():
-    uuid = str(uuid.uuid1()).replace('-','').lower()
-    return uuid
-
-def ensure_team_fields_filled(team):
-    if not team:
-        return team
-    for attr in ["team_name"]:
-        team[attr] = team.get(attr, None)
-    return team
-
-def load_team(team_id=None):
-    item = None
-    if team_id:
-        item = load_team_from_db(team_id)
-        if item:
-            print("Team {} loaded from database.".format(team_id))
-            ensure_team_fields_filled(item)
-            item = deepload(item)
-        else:
-            print("Team {} not found.".format(team_id))
-    else:
-        print("Creating new team {}.".format(team_id))
-        item = {"team_id":team_id}
-        save_team(item)
-    ensure_team_fields_filled(item)
-    return item
-
-def get_team_header(event, team_id):
-    cookie = http.cookies.SimpleCookie()
-    name = TEAM_COOKIE_KEY
-    cookie[name] = team_id
-    cookie[name]["path"] = "/"
-    cookie[name]["domain"] = event["headers"]["Host"]
-    cookie[name]["secure"] = True
-    cookie[name]["httponly"] = True
-    expires_at = datetime.now() + timedelta(days=7)
-    age_seconds = 7*24*60*60
-    cookie[name]["max-age"] = age_seconds
-    cookie[name]["expires"] = expires_at.strftime("%a, %d %b %Y %H:%M:%S GMT")
-    blob = cookie.output(header="").strip()
-    return {"Set-Cookie":blob}
-
-def team_login(event):
-    params = event.get("multiValueQueryStringParameters",{})
-    params = params if params else {}
-    team_ids = params.get("team_id",[])
-    if not team_ids:
-        return make_404(event)
-    team_id = team_ids[0]
-    if not team_id:
-        return make_404(event)
-    team = load_team(team_id)
-    if not team:
-        return make_404(event)
-    cookie_header = get_team_header(event, team_id)
-    return redirect(events.base_url(event), headers=cookie_header)
-
 def get_cookies(event):
     cookie_dict = {}
     try:
@@ -398,64 +321,3 @@ def get_cookies(event):
     except:
         traceback.print_exc()
     return cookie_dict
-
-def get_team_from_event(event):
-    cookies = get_cookies(event)
-    if not cookies.get(TEAM_COOKIE_KEY):
-        return None
-    team_id = cookies[TEAM_COOKIE_KEY]
-    return load_team(team_id)
-
-def add_team_to_event(info, *args, **kwargs):
-    team = get_team_from_event(info["event"])
-    info["event"]["team"] = team
-    return info
-
-def scrape_team_images(team):
-    team_name = team.get("team_name")
-    if not team_name:
-        return
-    images = team.get("images")
-    team["images"] = images if images else []
-    images = team["images"]
-    image_codes = [x["shortcode"] for x in images]
-    all_image_codes = instagram.get_images_from_profile(team_name)
-    new_image_codes = [x for x in all_image_codes if x not in image_codes]
-    new_images = []
-    for image_code in new_image_codes:
-        image = instagram.get_image_info(image_code)
-        if image.get("street_address") and image.get("city_name") and image.get("zip_code"):
-            address = "{street_address}, {city_name} {zip_code}".format(**image)
-            image["coordinates"] = gmaps.load_coordinates_from_google(address)
-        new_images.append(image)
-    team["images"].extend(new_images)
-    if new_images:
-        save_team(team)
-
-@loader_for("team_images.html")
-def team_images_handler(event, *args, **kwargs):
-    if not event["team"]:
-        return make_404(event)
-    team = event["team"]
-    scrape_team_images(team)
-    images = team.get("images")
-    images = images if images else []
-    for image in images:
-        image["pretty"] = {}
-        if image.get("street_address") and image.get("city_name") and image.get("zip_code"):
-            image["pretty"]["address"] = "{street_address}, {city_name} {zip_code}".format(**image)
-        else:
-            image["pretty"]["address"] = "<unknown>"
-        image["pretty"]["time"] = datetime.fromtimestamp(int(image["timestamp"])).strftime("%c")
-        image["pretty"]["caption"] = image.get("caption")
-        image["pretty"]["caption"] = image["pretty"]["caption"] if image["pretty"]["caption"] else "<no caption>"
-        image["pretty"]["caption"] = image["pretty"]["caption"] if len(image["pretty"]["caption"]) < 100 else (image["pretty"]["caption"][:97]+"...")
-        image["pretty"]["address"] = "{street_address}, {city_name} {zip_code}".format(**image)
-        image["pretty"]["url"] = instagram.image_url(image["shortcode"])
-        image["pretty"]["thumbnail"] = {}
-        if image["sizes"]:
-            thumbnail = image["sizes"][0]
-            image["pretty"]["thumbnail"]["height"] = thumbnail["config_height"]
-            image["pretty"]["thumbnail"]["width"] = thumbnail["config_width"]
-            image["pretty"]["thumbnail"]["src"] = thumbnail["src"]
-    return {"team":team, "images":images}

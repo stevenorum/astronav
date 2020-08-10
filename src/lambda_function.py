@@ -9,18 +9,15 @@ STATIC_MATCHERS = [
 ]
 
 STANDARD_PREPROCESSORS = [
-    handlers.add_team_to_event
 ]
 
 DYNAMIC_MATCHERS = [
     PathMatcher(r"^/?$", ui_stuff.get_page, {"template_name":"index.html"}, preprocessor_functions=STANDARD_PREPROCESSORS),
     PathMatcher(r"^/?store_route$", handlers.store_route, preprocessor_functions=STANDARD_PREPROCESSORS),
-    PathMatcher(r"^/?team_login$", handlers.team_login, preprocessor_functions=STANDARD_PREPROCESSORS),
     PathMatcher(r"^/?route_map.html$", handlers.view_route, preprocessor_functions=STANDARD_PREPROCESSORS),
     PathMatcher(r"^/?new_route.html$", handlers.new_route_handler, preprocessor_functions=STANDARD_PREPROCESSORS),
     PathMatcher(r"^/?route_list.html$", handlers.route_list_handler, preprocessor_functions=STANDARD_PREPROCESSORS),
     PathMatcher(r"^/?all_routes.html$", handlers.route_list_all_handler, preprocessor_functions=STANDARD_PREPROCESSORS),
-    PathMatcher(r"^/?team_images.html$", handlers.team_images_handler, preprocessor_functions=STANDARD_PREPROCESSORS),
     PathMatcher(r"^/?(?P<template_name>[a-z_]*.html)$", ui_stuff.get_page, preprocessor_functions=STANDARD_PREPROCESSORS),
     PathMatcher(r".*debug.*", ui_stuff.make_debug, preprocessor_functions=STANDARD_PREPROCESSORS),
     PathMatcher(r".*", ui_stuff.make_404),

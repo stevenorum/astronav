@@ -6,6 +6,7 @@
 {% endblock %}
 
 {% block body %}
+{% if superoptimize %}<h2>THIS ROUTE IS SUPER-OPTIMIZED AND MAY CONTAIN NON-HIGHWAY BUT STILL RISKY SEGMENTS PULLED FROM DRIVING DIRECTIONS. DON'T BE AN IDIOT IF SOMETHING LOOKS IFFY.</h2>{% endif %}
 <h2>Distance: {{ distance }}</h2>
 <h3>Time guess: {{ duration }}</h3>
 <h3>Route ID: {{ route_id }}</h3>

@@ -18,7 +18,7 @@
     </thead>
     <tbody>
     {% for route in routes %}
-    <tr>
+    <tr {{ 'style="color:red;"' if route['superoptimize'] else '' }}>
       <td scope="row"><a href="{{base_path}}/route_map.html?route_id={{route['route_id']}}">{{ route['route_id'][:4] }}...</a></td>
       <td>{{ route['created_string'] }}</td>
       <td>{{ route['addresses'][0] }}</td>

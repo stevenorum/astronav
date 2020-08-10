@@ -57,11 +57,7 @@
                             ],
                             "Resource": [
                                 { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${RouteTable}"},
-                                { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${RouteTable}/*"},
-                                { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${TeamTable}"},
-                                { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${TeamTable}/*"},
-                                { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ImageTable}"},
-                                { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ImageTable}/*"}
+                                { "Fn::Sub" : "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${RouteTable}/*"}
                             ],
                             "Effect": "Allow"
                         },
@@ -117,9 +113,7 @@
                 "Environment":{
                     "Variables":{
                         "STACK_NAME":{"Ref":"AWS::StackName"},
-                        "TEAM_TABLE":{"Ref":"TeamTable"},
-                        "ROUTE_TABLE":{"Ref":"RouteTable"},
-                        "IMAGE_TABLE":{"Ref":"ImageTable"}
+                        "ROUTE_TABLE":{"Ref":"RouteTable"}
                     }
                 },
                 "Events": {

@@ -17,11 +17,7 @@ from sneks.sam.ui_stuff import loader_for, make_404
 
 GMAPS_API_KEY = os.environ["GMAPS_SECRET"]
 
-TEAM_COOKIE_KEY = "astronav-team"
-
-TEAM_TABLE = boto3.resource("dynamodb").Table(os.environ["TEAM_TABLE"])
 ROUTE_TABLE = boto3.resource("dynamodb").Table(os.environ["ROUTE_TABLE"])
-IMAGE_TABLE = boto3.resource("dynamodb").Table(os.environ["IMAGE_TABLE"])
 
 def bearing(lat1, lon1, lat2, lon2):
     lat1, lon1, lat2, lon2 = map(float, [lat1, lon1, lat2, lon2])
@@ -64,18 +60,33 @@ def minimize_gps(point, distance=1):
             _lng_str = _lng_str[:-1]
     return {"lat":Decimal(lat_str), "lng":Decimal(lng_str)}
 
-def load_route_from_google(addresses):
+def load_raw_route_from_google(addresses, mode="walking", optimize=True, avoid_highways=False):
     kwargs = {
         "origin":addresses[0],
         "destination":addresses[-1],
-        "mode":"walking",
+        "mode":mode,
         "waypoints":addresses[1:-1],
-        "optimize_waypoints":True,
-        "avoid":["tolls","ferries"]
+        "optimize_waypoints":optimize,
+        "avoid":["tolls","ferries"] + (["highways"] if avoid_highways else [])
     }
     gmaps = googlemaps.Client(key=GMAPS_API_KEY)
     route = gmaps.directions(**kwargs)[0]
     return route
+
+def load_route_from_google(addresses, superoptimize=False):
+    walking_route = load_raw_route_from_google(addresses, mode="walking", optimize=True)
+    address_order = [l["start_address"] for l in walking_route["legs"]] + [walking_route["legs"][-1]["end_address"]]
+    cycling_route = load_raw_route_from_google(address_order, mode="bicycling", optimize=False)
+    driving_route = cycling_route
+    if superoptimize:
+        driving_route = load_raw_route_from_google(address_order, mode="driving", optimize=False, avoid_highways=True)
+    leg_count = len(walking_route["legs"])
+    for i in range(leg_count):
+        if walking_route["legs"][i]["distance"]["value"] > cycling_route["legs"][i]["distance"]["value"]:
+            walking_route["legs"][i] = cycling_route["legs"][i]
+        if walking_route["legs"][i]["distance"]["value"] > driving_route["legs"][i]["distance"]["value"]:
+            walking_route["legs"][i] = driving_route["legs"][i]
+    return walking_route
 
 def load_coordinates_from_google(address):
     print("Loading address from google maps: {}".format(address))

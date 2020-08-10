@@ -20,6 +20,7 @@ Spring Garden St, Philadelphia, PA 19130
 Reservoir Dr, Philadelphia, PA 19119
 1 Lincoln Financial Field Way, Philadelphia, PA 19148{% endif %}</textarea><br>
       Return to start: <input type="checkbox" id="returnToStart" {% if return_to_start is defined and return_to_start %}checked{% endif %}><br>
+      Superoptimize: <input type="checkbox" id="superOptimize" checked><br>
       <input type="submit">
     </form>
   </div>
@@ -68,7 +69,10 @@ var addRoute = function() {
         errorMessage("Too many waypoints provided.  Maximum is 25, counting start and end (sorry, Google's rules, not mine).");
         return;
     }
-    var request = {addresses: addrs};
+    var request = {addresses: addrs, superoptimize: false};
+    if (document.getElementById("superOptimize").checked) {
+        request = {addresses: addrs, superoptimize: true};
+    }
     // https://stackoverflow.com/questions/6396101/pure-javascript-send-post-data-without-a-form
     var xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function () {
