@@ -199,6 +199,15 @@
                             "Effect": "Allow"
                         },
                         {
+                            "Action": "secretsmanager:GetSecretValue",
+                            "Resource":[
+                                "arn:aws:secretsmanager:us-east-1:959113775746:secret:conf/*",
+                                "arn:aws:secretsmanager:us-east-1:959113775746:secret:prod/github-KzCYji",
+                                "arn:aws:secretsmanager:us-east-1:959113775746:secret:prod/astronav-wbSyGA"
+                            ],
+                            "Effect":"Allow"
+                        },
+                        {
                             "Action": [
                                 "cloudformation:CreateChangeSet"
                             ],
