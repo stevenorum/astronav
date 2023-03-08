@@ -208,6 +208,18 @@
                             "Effect":"Allow"
                         },
                         {
+                            "Action": "kms:Decrypt",
+                            "Resource":[
+                                "arn:aws:kms:*:959113775746:key/*",
+                            ],
+                            "Condition": {
+                                "ForAnyValue:StringLike": {
+                                    "kms:ResourceAliases": "alias/shared_ssm"
+                                }
+                            },
+                            "Effect":"Allow"
+                        },
+                        {
                             "Action": [
                                 "cloudformation:CreateChangeSet"
                             ],
