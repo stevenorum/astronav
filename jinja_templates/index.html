@@ -2,6 +2,7 @@
 {% extends "base.html.jinja" %}
 
 {% block body %}
+<div class="alert alert-warning text-center" role="alert">In the past I made this page private whenever my team was competing, but at this point we're competing fairly rarely and have never been in a situation where the possible advantage gained from the directions on this page would've made a difference, so I'm going to leave it available to everyone from now on. That said, still feel free to spin up your own copy if you want to be on the safe side or want to add your own improvements; all the code is open-source and <a href="https://github.com/stevenorum/astronav" target="_blank">available on GitHub</a>, although a few of the CloudFormation templates will need tweaked to work in accounts other than mine as they contain hard-coded references in a few places.</div>
 <div class="py-5 text-center">
   <img class="d-block mx-auto mb-4" src="{{ static_base }}/static/{{ _site_name[0] }}.png" alt="" width="72" height="72">
   <h2>Welcome to AstroNav!</h2>
