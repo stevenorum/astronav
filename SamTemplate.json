@@ -108,7 +108,7 @@
                 "Role": {"Fn::GetAtt":["LambdaRole","Arn"]},
                 "Timeout": 30,
                 "MemorySize":256,
-                "Runtime": "python3.6",
+                "Runtime": "{{resolve:secretsmanager:arn:aws:secretsmanager:us-east-1:959113775746:secret:conf/buildparams-cjTEi6:SecretString:lambda_runtime}}",
                 "CodeUri": "./build/",
                 "Environment":{
                     "Variables":{

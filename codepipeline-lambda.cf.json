@@ -6,10 +6,6 @@
             "Type": "String",
             "Description": "GitHub user name."
         },
-        "OAuthToken": {
-            "Type": "String",
-            "Description": "GitHub OAuthToken giving AWS access to GitHub."
-        },
         "PackageName": {
             "Type": "String",
             "Description": "GitHub package name."
@@ -28,19 +24,6 @@
             "Type": "String",
             "Description": "Name of the pipeline, build project, and stack this will create.  I recommend <PackageName>-<PackageBranch>",
             "MinLength": 1
-        },
-        "BuildImage": {
-            "Type": "String",
-            "Description": "Docker build image to use for this stack.",
-            "Default": "aws/codebuild/eb-python-3.4-amazonlinux-64:2.3.2"
-        },
-        "GmapsPublicKey": {
-            "Type": "String",
-            "Description": "Google Maps API key that will be embedded in the page served to users.  Must be enabled for the domain you're using, and shouldn't be enabled for anything else."
-        },
-        "GmapsSecretKey": {
-            "Type": "String",
-            "Description": "Google Maps API key that will be used internally by AstroNav to look up directions.  It will not be shown to users."
         }
     },
     "Resources": {
@@ -350,7 +333,7 @@
                 },
                 "Environment": {
                     "ComputeType": "BUILD_GENERAL1_SMALL",
-                    "Image":{"Ref":"BuildImage"},
+                    "Image":"{{resolve:secretsmanager:arn:aws:secretsmanager:us-east-1:959113775746:secret:conf/buildparams-cjTEi6:SecretString:build_image}}",
                     "PrivilegedMode": false,
                     "Type": "LINUX_CONTAINER",
                     "EnvironmentVariables": [
@@ -371,7 +354,16 @@
                         {
                             "Name": "BUILD_PARAMS",
                             "Value":{
-                                "Fn::Sub": "{\"GMAPS_SECRET\":\"${GmapsSecretKey}\",\"GMAPS_PUBLIC\":\"${GmapsPublicKey}\"}"
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "{\"GMAPS_SECRET\":\"",
+                                        "{{resolve:secretsmanager:arn:aws:secretsmanager:us-east-1:959113775746:secret:prod/astronav-wbSyGA:SecretString:gmaps_secret_key}}",
+                                        "\",\"GMAPS_PUBLIC\":\"",
+                                        "{{resolve:secretsmanager:arn:aws:secretsmanager:us-east-1:959113775746:secret:prod/astronav-wbSyGA:SecretString:gmaps_public_key}}",
+                                        "\"}"
+                                    ]
+                                ]
                             },
                             "Type": "PLAINTEXT"
                         }
@@ -397,9 +389,7 @@
                     },
                     "Auth": {
                         "Type": "OAUTH",
-                        "Resource": {
-                            "Ref": "OAuthToken"
-                        }
+                        "Resource": "{{resolve:secretsmanager:arn:aws:secretsmanager:us-east-1:959113775746:secret:prod/github-KzCYji:SecretString:codesuite_oauth}}"
                     }
                 },
                 "TimeoutInMinutes": {
@@ -446,9 +436,7 @@
                                     "Owner": {
                                         "Ref": "UserName"
                                     },
-                                    "OAuthToken": {
-                                        "Ref": "OAuthToken"
-                                    },
+                                    "OAuthToken": "{{resolve:secretsmanager:arn:aws:secretsmanager:us-east-1:959113775746:secret:prod/github-KzCYji:SecretString:codesuite_oauth}}",
                                     "PollForSourceChanges": true
                                 },
                                 "InputArtifacts": [
