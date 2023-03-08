@@ -2,7 +2,7 @@ version: 0.2
 phases:
   install:
     commands:
-      - yum install -y python36-devel
+      - yum install -y python3
       - pip3 install --upgrade sneks
       - sneks install-dependencies
   pre_build:
