@@ -13,7 +13,7 @@
         "PackageBranch": {
             "Type": "String",
             "Description": "GitHub package branch.",
-            "Default": "master"
+            "Default": "main"
         },
         "BuildTimeout": {
             "Type": "Number",
@@ -374,18 +374,7 @@
                         },
                         {
                             "Name": "BUILD_PARAMS",
-                            "Value":{
-                                "Fn::Join": [
-                                    "",
-                                    [
-                                        "{\"GMAPS_SECRET\":\"",
-                                        "{{resolve:secretsmanager:arn:aws:secretsmanager:us-east-1:959113775746:secret:prod/astronav-wbSyGA:SecretString:gmaps_secret_key}}",
-                                        "\",\"GMAPS_PUBLIC\":\"",
-                                        "{{resolve:secretsmanager:arn:aws:secretsmanager:us-east-1:959113775746:secret:prod/astronav-wbSyGA:SecretString:gmaps_public_key}}",
-                                        "\"}"
-                                    ]
-                                ]
-                            },
+                            "Value":"{}",
                             "Type": "PLAINTEXT"
                         }
                     ]
@@ -515,6 +504,73 @@
                                 },
                                 "Configuration": {
                                     "ActionMode": "CHANGE_SET_REPLACE",
+                                    "StackName": {"Ref":"AWS::StackName"},
+                                    "ChangeSetName": {
+                                        "Fn::Sub": "${AWS::StackName}-ChangeSet"
+                                    },
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudFormationRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "TemplatePath": "BuildArtifacts::NewSamTemplate.json",
+                                    "Capabilities": "CAPABILITY_IAM"
+                                },
+                                "InputArtifacts": [
+                                    {
+                                        "Name": "BuildArtifacts"
+                                    }
+                                ],
+                                "Name": "Create_Self_Change_Set",
+                                "OutputArtifacts": [
+                                    {
+                                        "Name": "SelfChangeSet"
+                                    }
+                                ],
+                                "RunOrder": 1
+                            },
+                            {
+                                "ActionTypeId": {
+                                    "Category": "Deploy",
+                                    "Owner": "AWS",
+                                    "Provider": "CloudFormation",
+                                    "Version": "1"
+                                },
+                                "Configuration": {
+                                    "ActionMode": "CHANGE_SET_EXECUTE",
+                                    "StackName": {"Ref":"ChildStackName"},
+                                    "ChangeSetName": {
+                                        "Fn::Sub": "${AWS::StackName}-ChangeSet"
+                                    },
+                                },
+                                "InputArtifacts": [
+                                    {
+                                        "Name": "SelfChangeSet"
+                                    }
+                                ],
+                                "Name": "Execute_Self_Change_Set",
+                                "OutputArtifacts": [
+                                    {
+                                        "Name": "NewSelfStack"
+                                    }
+                                ],
+                                "RunOrder": 2
+                            }
+                        ],
+                        "Name": "Update_Self_CF_stack"
+                    },
+                    {
+                        "Actions": [
+                            {
+                                "ActionTypeId": {
+                                    "Category": "Deploy",
+                                    "Owner": "AWS",
+                                    "Provider": "CloudFormation",
+                                    "Version": "1"
+                                },
+                                "Configuration": {
+                                    "ActionMode": "CHANGE_SET_REPLACE",
                                     "StackName": {"Ref":"ChildStackName"},
                                     "ChangeSetName": {
                                         "Fn::Sub": "${ChildStackName}-ChangeSet"
@@ -529,6 +585,9 @@
                                     "Capabilities": "CAPABILITY_IAM"
                                 },
                                 "InputArtifacts": [
+                                    {
+                                        "Name": "NewSelfStack"
+                                    },
                                     {
                                         "Name": "BuildArtifacts"
                                     }

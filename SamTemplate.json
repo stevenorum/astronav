@@ -113,7 +113,9 @@
                 "Environment":{
                     "Variables":{
                         "STACK_NAME":{"Ref":"AWS::StackName"},
-                        "ROUTE_TABLE":{"Ref":"RouteTable"}
+                        "ROUTE_TABLE":{"Ref":"RouteTable"},
+                        "GMAPS_SECRET":"{{resolve:secretsmanager:arn:aws:secretsmanager:us-east-1:959113775746:secret:prod/astronav-wbSyGA:SecretString:gmaps_secret_key}}",
+                        "GMAPS_PUBLIC":"{{resolve:secretsmanager:arn:aws:secretsmanager:us-east-1:959113775746:secret:prod/astronav-wbSyGA:SecretString:gmaps_public_key}}"
                     }
                 },
                 "Events": {
