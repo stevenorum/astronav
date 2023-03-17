@@ -509,7 +509,7 @@
                                         "Fn::Sub": "${AWS::StackName}-ChangeSet"
                                     },
                                     "ParameterOverrides": {
-                                        "Fn::Sub": "{\"UserName\": \"${UserName}\",\"PackageName\": \"${PackageName}\",\"PackageBranch\": \"${PackageBranch}\",\"BuildTimeout\": ${BuildTimeout},\"ChildStackName\": \"${ChildStackName}\"}"
+                                        "Fn::Sub": "{\"UserName\": \"${UserName}\",\"PackageName\": \"${PackageName}\",\"PackageBranch\": \"${PackageBranch}\",\"BuildTimeout\": \"${BuildTimeout}\",\"ChildStackName\": \"${ChildStackName}\"}"
                                     },
                                     "RoleArn": {
                                         "Fn::GetAtt": [
