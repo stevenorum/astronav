@@ -15,4 +15,5 @@ phases:
 artifacts:
   files:
     - NewSamTemplate.json
+    - codepipeline-lambda.cf.json
   discard-paths: yes

@@ -514,7 +514,7 @@
                                             "Arn"
                                         ]
                                     },
-                                    "TemplatePath": "BuildArtifacts::NewSamTemplate.json",
+                                    "TemplatePath": "BuildArtifacts::codepipeline-lambda.cf.json",
                                     "Capabilities": "CAPABILITY_IAM"
                                 },
                                 "InputArtifacts": [
@@ -539,7 +539,7 @@
                                 },
                                 "Configuration": {
                                     "ActionMode": "CHANGE_SET_EXECUTE",
-                                    "StackName": {"Ref":"ChildStackName"},
+                                    "StackName": {"Ref":"AWS::StackName"},
                                     "ChangeSetName": {
                                         "Fn::Sub": "${AWS::StackName}-ChangeSet"
                                     },
